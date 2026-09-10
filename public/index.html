@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AURORA API · High-Throughput Model Gateway & Compute Index</title>
+  <meta name="description" content="Native OpenAI v1 protocol. Instant drop-in for Cursor, VS Code, NextChat & autonomous agents. Ultra-low latency, multi-node upstream failover, and exact token billing." />
+
+  <!-- 预连接高质感现代字体 (Manrope, Inter, DM Mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- 1. 全局光标微光 (Pointer Glow) -->
+  <div class="pointer-glow" aria-hidden="true"></div>
+
+  <div class="site-shell">
+    <!-- 2. 极简黑曜石导航栏 (Minimalist Site Nav) -->
+    <header class="site-nav">
+      <a class="wordmark" href="#top" aria-label="Aurora API home">
+        <span class="wordmark-mark">A/G</span>
+        <span>AURORA API</span>
+      </a>
+
+      <div class="nav-live-pill">
+        <span class="nav-live-dot"></span>
+        <span>HIGH AVAILABILITY PIPELINE</span>
+      </div>
+
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="#pricing-section">01 / Packages</a>
+        <a href="#models-section">02 / Models</a>
+        <a href="#guides-section">03 / Integration</a>
+        <a href="#playground-section">04 / Terminal</a>
+        <a href="/claim" target="_blank" class="nav-btn-highlight">05 / Claim (提卡) ↗</a>
+        <button class="button button-primary" onclick="scrollToSection('pricing-section')" style="min-height: 38px; padding: 0 18px; font-size: 0.72rem; letter-spacing: 0.06em;">
+          ⚡ 获取专属 KEY
+        </button>
+      </nav>
+    </header>
+
+    <!-- 3. 电影级巨幕 Hero 核心区域 (Cinematic Hero) -->
+    <section class="hero" id="top">
+      <img class="hero-image" src="./assets/film/threshold-hero.jpg" alt="A solitary figure facing an impossible luminous horizon at the edge of a dark sea" />
+      <div class="hero-wash"></div>
+      <div class="hero-grid" aria-hidden="true"></div>
+
+      <div class="hero-content page-width">
+        <p class="hero-kicker"><span></span> AI-NATIVE OPEN GATEWAY · 2026 ARCHITECTURE</p>
+        
+        <h1 class="hero-title">
+          <span>One Endpoint,</span>
+          <span class="outline-type">Every Model.</span>
+        </h1>
+
+        <p class="hero-copy">
+          <strong>100% 原生兼容 OpenAI 协议。</strong> 10 秒接入 <strong>Cursor</strong>、<strong>VS Code</strong>、<strong>NextChat</strong>、<strong>Cherry Studio</strong>。<br>
+          内置智能多分组路由与故障自动顺延，免除翻墙与风控困扰，按真实 Token 毫秒扣除。
+        </p>
+
+        <div class="hero-actions">
+          <button class="button button-primary" onclick="scrollToSection('pricing-section')">
+            Get API Key <span>↗</span>
+          </button>
+          <button class="button button-ghost" onclick="scrollToSection('playground-section')">
+            Test In Console <span>→</span>
+          </button>
+          <a class="text-link" href="/claim" target="_blank">
+            Order Claim Center (一单一密自提) <span>→</span>
+          </a>
+        </div>
+
+        <!-- 核心端点与当前密钥控制条 (Brutalist Endpoint Rail) -->
+        <div class="endpoint-rail-box">
+          <div class="endpoint-rail-cell">
+            <div class="rail-cell-top">
+              <span>📡 统一接口地址 (BASE URL)</span>
+              <div class="rail-cell-actions">
+                <button class="btn-rail-action" id="btn-copy-base-url" onclick="copyBaseUrl(event)">📋 复制 URL</button>
+                <button class="btn-rail-action" onclick="promptConfigureGateway()">⚙️ 配置网关</button>
+              </div>
+            </div>
+            <div class="rail-code-val" id="display-base-url">http://localhost:3005/v1</div>
+          </div>
+
+          <div class="endpoint-rail-cell">
+            <div class="rail-cell-top">
+              <span>🔑 当前激活密钥 (ACTIVE API KEY)</span>
+              <div class="rail-cell-actions">
+                <button class="btn-rail-action" id="btn-copy-api-key" onclick="copyCurrentKey(event)">📋 复制 KEY</button>
+                <button class="btn-rail-action" onclick="promptSwitchKey()">🔄 切换 KEY</button>
+              </div>
+            </div>
+            <div class="rail-code-val" id="display-current-key">sk-aurora-demo-8888</div>
+          </div>
+        </div>
+
+        <!-- 4列硬核技术指标栏 (Hero Rail) -->
+        <div class="hero-rail">
+          <div>
+            <span>01 / SCHEMA</span>
+            <strong>OpenAI v1 Native</strong>
+          </div>
+          <div>
+            <span>02 / STREAMING</span>
+            <strong>SSE Zero Overhead</strong>
+          </div>
+          <div>
+            <span>03 / RESILIENCE</span>
+            <strong>Multi-Upstream Failover</strong>
+          </div>
+          <div>
+            <span>04 / VALIDITY</span>
+            <strong>Permanent Tokens</strong>
+          </div>
+        </div>
+      </div>
+
+      <a class="scroll-cue" href="#pricing-section">
+        <span>Scroll to index</span>
+        <i></i>
+      </a>
+    </section>
+
+    <!-- 4. 算力包选购矩阵 (Pricing & Capacity Index) -->
+    <section class="work-section" id="pricing-section">
+      <div class="page-width">
+        <div class="work-heading">
+          <div>
+            <p class="eyebrow">01 / CAPACITY PACKAGES</p>
+            <h2>Compute Index</h2>
+          </div>
+          <p>微信 / 支付宝扫码极速支付，安全合规秒级发卡，额度终身有效，按真实 Token 扣除。</p>
+        </div>
+
+        <!-- 过滤药丸栏 -->
+        <div class="filter-bar" role="group" aria-label="Filter packages">
+          <button type="button" class="active" onclick="filterPackages('All')">All<sup>4</sup></button>
+          <button type="button" onclick="filterPackages('test')">联调专区<sup>1</sup></button>
+          <button type="button" onclick="filterPackages('popular')">爆款主力<sup>1</sup></button>
+          <button type="button" onclick="filterPackages('pro')">极客进阶<sup>2</sup></button>
+        </div>
+
+        <!-- 卡片网格 -->
+        <div class="pricing-grid">
+          <!-- 1元测试包 -->
+          <div class="pricing-card" data-category="test">
+            <div>
+              <div class="card-top-indicator">🛠️ 联调专享 · 秒级出卡</div>
+              <h3 class="pkg-name-text">🧪 1元极速联调包</h3>
+              <div class="pkg-price-large">
+                <span class="price-currency-sym">¥</span>
+                <span class="price-big-number">1.00</span>
+                <span class="price-validity-tag">/ 联调实测</span>
+              </div>
+              <div class="pkg-tokens-box">
+                <span>算力额度</span>
+                <strong>300,000 Tokens</strong>
+              </div>
+              <ul class="pkg-feature-list">
+                <li>1 元真实扫码极速验证全链路</li>
+                <li>支持 Cursor / VS Code 全协议测试</li>
+                <li>验证多模态看图与智能路由</li>
+              </ul>
+            </div>
+            <button class="btn-purchase-card" onclick="handleBuy('pkg_test')">
+              <span>💳 1元秒级出卡实测 (面包多)</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          <!-- 5元体验包 -->
+          <div class="pricing-card" data-category="pro">
+            <div>
+              <div class="card-top-indicator">🚀 入门尝鲜 · 终身有效</div>
+              <h3 class="pkg-name-text">极客体验包</h3>
+              <div class="pkg-price-large">
+                <span class="price-currency-sym">¥</span>
+                <span class="price-big-number">5.00</span>
+                <span class="price-validity-tag">/ 永久有效</span>
+              </div>
+              <div class="pkg-tokens-box">
+                <span>算力额度</span>
+                <strong>2,000,000 Tokens</strong>
+              </div>
+              <ul class="pkg-feature-list">
+                <li>相当于 4000+ 轮编程与长文对话</li>
+                <li>支持 Cursor / NextChat 全协议</li>
+                <li>全流式 SSE 打字机毫秒级首字输出</li>
+              </ul>
+            </div>
+            <button class="btn-purchase-card" onclick="handleBuy('pkg_trial')">
+              <span>💳 赞助获取专属 Key (爱发电)</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          <!-- 15元爆款主力包 (Featured) -->
+          <div class="pricing-card card-featured" data-category="popular">
+            <div>
+              <div class="card-top-indicator">🔥 程序员热销主力首选</div>
+              <h3 class="pkg-name-text">主力畅享包</h3>
+              <div class="pkg-price-large">
+                <span class="price-currency-sym">¥</span>
+                <span class="price-big-number" style="color: var(--electric);">15.00</span>
+                <span class="price-validity-tag">/ 永久有效</span>
+              </div>
+              <div class="pkg-tokens-box" style="border-color: var(--electric);">
+                <span>包含加成算力</span>
+                <strong>7,000,000 Tokens</strong>
+              </div>
+              <ul class="pkg-feature-list">
+                <li>专为程序员代码重构与日常主力打造</li>
+                <li>包含全部模型矩阵自由调用</li>
+                <li>高并发优先队列专线调度</li>
+              </ul>
+            </div>
+            <button class="btn-purchase-card" onclick="handleBuy('pkg_standard')">
+              <span>💳 立即获取专属 Key (热销推荐)</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          <!-- 29.9元极客狂飙包 -->
+          <div class="pricing-card" data-category="pro">
+            <div>
+              <div class="card-top-indicator">⚡ 超高性价比 · 重度生产力</div>
+              <h3 class="pkg-name-text">极客狂飙包</h3>
+              <div class="pkg-price-large">
+                <span class="price-currency-sym">¥</span>
+                <span class="price-big-number">29.90</span>
+                <span class="price-validity-tag">/ 永久有效</span>
+              </div>
+              <div class="pkg-tokens-box">
+                <span>海量算力</span>
+                <strong>16,000,000 Tokens</strong>
+              </div>
+              <ul class="pkg-feature-list">
+                <li>深度代码库检索与全天候攻坚</li>
+                <li>支持商业级超清多模态分析</li>
+                <li>适合全职独立开发者全天候生产力</li>
+              </ul>
+            </div>
+            <button class="btn-purchase-card" onclick="handleBuy('pkg_pro')">
+              <span>💳 赞助获取专属 Key (爱发电)</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 个人状态与卡密充值条 -->
+        <div style="margin-top: 48px; background: rgba(13, 17, 24, 0.9); border: 1px solid var(--line); padding: 28px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span class="nav-live-dot"></span>
+              <strong id="card-status-title" style="font-family: var(--font-mono); font-size: 0.92rem; color: #fff;">当前密钥：sk-aurora-demo-8888</strong>
+              <span id="card-remark" style="font: 500 0.65rem var(--font-mono); color: var(--electric); background: rgba(184,255,56,0.1); padding: 2px 8px; border: 1px solid rgba(184,255,56,0.3);">体验 Key</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--muted);">
+              剩余可用额度：<span id="stat-remaining-tokens" style="color: var(--electric); font-family: var(--font-mono); font-weight: 700;">2,000,000 Tokens</span>
+              &nbsp;·&nbsp; 已消耗：<span id="stat-used-tokens" style="font-family: var(--font-mono);">0 Tokens</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="redeem-input" class="modal-input" placeholder="输入卡密兑换码 (sk-aurora-xxxx)..." style="margin-top: 0; width: 280px; padding: 10px 14px; font-size: 0.82rem;" />
+            <button class="button button-primary" onclick="handleRedeem()" style="min-height: 40px; padding: 0 18px; font-size: 0.68rem;">
+              ⚡ 立即激活
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 官方模型矩阵 (3D Wireframe Orbit Matrix) -->
+    <section class="formats page-width" id="models-section" aria-label="Official Models">
+      <div class="section-number">02 / Official Model Matrix</div>
+      <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 20px;">
+        <h2 style="margin: 0; font-family: var(--font-display); font-size: clamp(2.8rem, 5.5vw, 5.2rem); letter-spacing: -0.05em; font-weight: 600;">
+          Production Engines.
+        </h2>
+        <p style="max-width: 400px; margin: 0; color: var(--muted); font-size: 0.92rem;">全节点经过 99.9% 连通压测，点击任意模型卡片可一键填充至下方联调终端</p>
+      </div>
+
+      <div class="format-grid">
+        <article onclick="selectTestModel('aurora-coder')">
+          <div class="format-orbit"><i style="background: var(--electric);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id">aurora-coder</span>
+            <h3>极光·全栈编程与工程大师</h3>
+            <p>Python、TS、Vue/React、Cursor/VSCode 编程专线，首字毫秒级直连</p>
+            <span class="model-rate-tag">1.0x 标准 Tokens (Gemini 3.7 Flash)</span>
+          </div>
+        </article>
+
+        <article onclick="selectTestModel('gpt-6-astra')">
+          <div class="format-orbit"><i style="background: var(--violet);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id" style="color: var(--violet);">gpt-6-astra</span>
+            <h3>GPT-6 Astra·新一代思考</h3>
+            <p>前沿新一代推理大模型、长文本工程架构、多模态复杂任务解析攻坚</p>
+            <span class="model-rate-tag" style="color: var(--violet);">3.0x 旗舰 Tokens</span>
+          </div>
+        </article>
+
+        <article onclick="selectTestModel('claude-3-5-sonnet')">
+          <div class="format-orbit"><i style="background: var(--coral);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id" style="color: var(--coral);">claude-3-5-sonnet</span>
+            <h3>Claude 3.5 Sonnet</h3>
+            <p>顶级优美代码书写、叙事文案创作、长篇文学研讨与学术深度论证</p>
+            <span class="model-rate-tag" style="color: var(--coral);">2.0x 商业文学 Tokens</span>
+          </div>
+        </article>
+
+        <article onclick="selectTestModel('aurora-deepseek')">
+          <div class="format-orbit"><i style="background: var(--cyan);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id" style="color: var(--cyan);">aurora-deepseek</span>
+            <h3>极光·超能逻辑推理专家</h3>
+            <p>深度逻辑推演、递归算法推导、数理建模与长链思维链路拆解</p>
+            <span class="model-rate-tag" style="color: var(--cyan);">1.2x 深度 Tokens</span>
+          </div>
+        </article>
+
+        <article onclick="selectTestModel('aurora-doubao')">
+          <div class="format-orbit"><i style="background: var(--amber);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id" style="color: var(--amber);">aurora-doubao</span>
+            <h3>极光·豆包中文创作专家</h3>
+            <p>中文地道母语润色、小红书高赞爆款文案、营销脚本与知乎长文创作</p>
+            <span class="model-rate-tag" style="color: var(--amber);">1.0x 标准 Tokens</span>
+          </div>
+        </article>
+
+        <article onclick="selectTestModel('aurora-chat')">
+          <div class="format-orbit"><i style="background: var(--blue);"></i></div>
+          <div class="model-article-bottom">
+            <span class="model-article-id" style="color: var(--blue);">aurora-chat</span>
+            <h3>极光·极速通用智能助手</h3>
+            <p>日常办公、知识百科检索、多语种翻译、邮件批阅与格式化提取</p>
+            <span class="model-rate-tag" style="color: var(--blue);">1.0x 标准 Tokens (秒级出词)</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 6. 标志性白底反转高对比章节 (Inverted Editorial Section) -->
+    <section class="process-section" id="guides-section">
+      <div class="process-sticky page-width">
+        <div class="process-title">
+          <p class="eyebrow">03 / INTEGRATION ARCHITECTURE</p>
+          <h2>Plug and play<br />in 10 seconds.</h2>
+          <p style="margin-top: 24px; color: #525558; line-height: 1.7; font-size: 0.95rem;">
+            无需安装任何特定插件，任何支持自定义 OpenAI 接口地址的桌面软件与开发环境均可直接秒级调用。
+          </p>
+        </div>
+
+        <div class="process-list">
+          <article class="process-step">
+            <span>01</span>
+            <h3>Cursor & VS Code</h3>
+            <p>
+              打开 Settings ➔ Models ➔ OpenAI API Key，勾选开启 <strong>Override OpenAI Base URL</strong>，填入 <code class="process-code-inline" id="guide-base-url-1">http://localhost:3005/v1</code>，输入专属 Key，开启 <code class="process-code-inline">aurora-coder</code> 即可随意 Cmd+K 极速编程！
+            </p>
+          </article>
+
+          <article class="process-step">
+            <span>02</span>
+            <h3>NextChat & Web Tools</h3>
+            <p>
+              打开 NextChat 或 沉浸式翻译插件，选择自定义服务商，API Host 填入 <code class="process-code-inline" id="guide-base-url-2">http://localhost:3005/v1</code>，输入您的 Key 并配置模型，点击右上角查询余额即可回显百万算力。
+            </p>
+          </article>
+
+          <article class="process-step">
+            <span>03</span>
+            <h3>Cherry Studio & ChatBox</h3>
+            <p>
+              在设置中选择添加 OpenAI 兼容服务商，Base URL 填入统一网关地址，添加模型代号 <code class="process-code-inline">aurora-coder</code> 或 <code class="process-code-inline">gpt-6-astra</code>，保存即可开启打字机流式对话。
+            </p>
+          </article>
+
+          <article class="process-step">
+            <span>04</span>
+            <h3>Python SDK & cURL</h3>
+            <p>
+              直接使用官方 <code class="process-code-inline">from openai import OpenAI</code>，实例化时指定 <code class="process-code-inline">base_url</code> 和 <code class="process-code-inline">api_key</code>，即可无感复用原有工程全套提示词与 Agent 工作流。
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. macOS 拟真 Dark IDE 交互式终端 (Playground Section) -->
+    <section class="playground-section page-width" id="playground-section">
+      <div class="section-number">04 / Online Interactive Console</div>
+      <div style="margin-top: 18px; display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 20px;">
+        <h2 style="margin: 0; font-family: var(--font-display); font-size: clamp(2.6rem, 5vw, 4.8rem); letter-spacing: -0.05em; font-weight: 600;">
+          Live Stream Playground.
+        </h2>
+        <p style="max-width: 420px; margin: 0; color: var(--muted); font-size: 0.92rem;">
+          在网页中实测 SSE 流式打字机逐字吐词与动态 Token 扣除，体验毫秒级首字出词响应
+        </p>
+      </div>
+
+      <div class="ide-terminal-wrapper">
+        <div class="ide-title-bar">
+          <div class="ide-mac-dots">
+            <span class="mac-dot dot-close"></span>
+            <span class="mac-dot dot-min"></span>
+            <span class="mac-dot dot-max"></span>
+          </div>
+          <div class="ide-tab-label">zsh — aurora-gateway-live-repl (OpenAI v1 Protocol)</div>
+          <label style="font: 500 0.65rem var(--font-mono); color: var(--muted); display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: uppercase;">
+            <input type="checkbox" id="test-stream-toggle" checked style="accent-color: var(--electric);">
+            <span>Stream Output (SSE)</span>
+          </label>
+        </div>
+
+        <div class="ide-body">
+          <div class="ide-control-row">
+            <span class="ide-prompt-symbol">❯ MODEL:</span>
+            <select id="test-model-select" class="ide-select" style="min-width: 280px;">
+              <option value="aurora-coder">aurora-coder · 极光全栈代码大师 (1.0x)</option>
+              <option value="gpt-6-astra">gpt-6-astra · GPT-6 架构思考专家 (3.0x)</option>
+              <option value="claude-3-5-sonnet">claude-3-5-sonnet · Claude 顶配文学商业 (2.0x)</option>
+              <option value="aurora-deepseek">aurora-deepseek · 超能逻辑推理专家 (1.2x)</option>
+              <option value="aurora-doubao">aurora-doubao · 豆包中文特调 (1.0x)</option>
+              <option value="aurora-chat">aurora-chat · 极速通用助手 (1.0x)</option>
+            </select>
+          </div>
+
+          <div class="ide-control-row">
+            <span class="ide-prompt-symbol">❯ PROMPT:</span>
+            <input type="text" id="test-prompt-input" class="ide-input" value="写一个 Python 极简快速排序算法，并加简明中文注释" />
+            <button class="btn-ide-run" id="btn-run-test" onclick="executePlaygroundTest()">⚡ EXECUTE CALL</button>
+          </div>
+
+          <div class="ide-output-screen" id="terminal-output-box">
+            <span style="color: #475569;">// 等待测试，点击上方【⚡ EXECUTE CALL】或按回车开始执行...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. 底部呼吁与页脚 (Contact & Footer) -->
+    <section class="contact-section">
+      <div class="contact-bg" aria-hidden="true"></div>
+      <div class="page-width contact-inner">
+        <p class="eyebrow">READY TO SCALE</p>
+        <h2>Bring the brief.<br /><span>We deliver the compute.</span></h2>
+        <p class="contact-copy">
+          高性价比、毫秒级响应、工业级高可用的 AI 大模型开放中枢。专为重度代码编写与 Agent 工作流打造。
+        </p>
+        <div class="contact-action">
+          <span>Enterprise & Custom Volume support: Contact via WeChat Official & Orders.</span>
+          <a href="#top" class="button button-ghost">Back to top <span>↑</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer page-width">
+      <a class="wordmark" href="#top">
+        <span class="wordmark-mark">A/G</span>
+        <span>AURORA API</span>
+      </a>
+      <p>Autonomous AI Gateway & Compute Infrastructure · China & Global Delivery</p>
+      <p>© 2026 AURORA API · Cloudflare Pages Edge Ready</p>
+    </footer>
+  </div>
+
+  <!-- 吐司通知 (Toast Notification) -->
+  <div class="modern-toast" id="modern-toast">
+    <span id="toast-icon">📋</span>
+    <span id="toast-msg">已复制到剪贴板！</span>
+  </div>
+
+  <!-- 现代黑曜石玻璃模态框 (Glass Modal Dialog) -->
+  <div class="glass-modal-backdrop" id="glass-modal-backdrop" onclick="closeModal()">
+    <div class="glass-modal-card" onclick="event.stopPropagation()">
+      <div class="glass-modal-header">
+        <div class="glass-modal-title" id="modal-title">🌌 提示</div>
+        <button class="glass-modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="glass-modal-body" id="modal-body">
+        <!-- 动态注入内容 -->
+      </div>
+      <div class="glass-modal-footer" id="modal-footer">
+        <button class="btn-modal-cancel" id="btn-modal-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-modal-confirm" id="btn-modal-confirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

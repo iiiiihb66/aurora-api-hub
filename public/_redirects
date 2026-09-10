@@ -1,0 +1,14 @@
+# ==========================================================
+# Cloudflare Pages URL Rewrites & Reverse Proxy Rules
+# ==========================================================
+
+# 1. 静态子页面无感友好路由
+/claim          /claim.html          200
+
+# 2. 生产环境 API 自动反代代理 (请将 api.yourdomain.com 替换为您的后端实际域名/VPS IP)
+# 部署到 Cloudflare Pages 后，只要配置了反代，前端 fetch('/v1/...') 会自动转发到您的专线后端
+# /v1/*         https://api.yourdomain.com/v1/:splat   200
+# /api/*        https://api.yourdomain.com/api/:splat  200
+
+# 3. 单页应用 (SPA) 兜底路由
+/*              /index.html          200

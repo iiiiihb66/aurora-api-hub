@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AURORA API · 专属卡密一键自提中心 (Claim Index)</title>
+
+  <!-- 预连接高质感现代字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .claim-wrapper {
+      max-width: 820px;
+      margin: 120px auto 80px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .claim-card {
+      background: #080a0d;
+      border: 1px solid var(--line);
+      padding: 48px 42px;
+      position: relative;
+    }
+
+    .claim-eyebrow {
+      margin-bottom: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font: 500 0.65rem var(--font-mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--electric);
+    }
+
+    .claim-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+      margin-bottom: 14px;
+      color: #fff;
+    }
+
+    .claim-desc {
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.65;
+      margin-bottom: 34px;
+    }
+
+    .order-input-container {
+      background: #020408;
+      border: 1px solid var(--line);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .order-input-label {
+      display: block;
+      font: 500 0.68rem var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .order-input-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .order-input-box {
+      flex: 1;
+      padding: 13px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .order-input-box:focus {
+      border-color: var(--electric);
+    }
+
+    .btn-submit-order {
+      padding: 13px 26px;
+      background: var(--electric);
+      color: #050608;
+      border: none;
+      font: 700 0.72rem var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-submit-order:hover {
+      background: #c8ff5e;
+      transform: translateY(-2px);
+    }
+
+    .order-tips-box {
+      font-size: 0.78rem;
+      color: var(--sub);
+      line-height: 1.8;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .platform-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .platform-tab-btn {
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .platform-tab-btn.active {
+      background: rgba(186, 255, 41, 0.12);
+      border-color: var(--electric);
+      color: var(--electric);
+      font-weight: bold;
+    }
+
+    .key-result-glass {
+      background: #020408;
+      border: 1px solid var(--electric);
+      padding: 28px;
+      margin-top: 28px;
+      display: none;
+      animation: fadeIn 0.35s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-key-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line);
+      padding: 14px 20px;
+      margin: 12px 0 20px 0;
+      gap: 14px;
+    }
+
+    .result-key-val {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--electric);
+      word-break: break-all;
+    }
+
+    .btn-action-copy {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--line);
+      color: #fff;
+      padding: 8px 18px;
+      font: 600 0.68rem var(--font-mono);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-action-copy:hover {
+      background: var(--electric);
+      color: #050608;
+      border-color: var(--electric);
+    }
+
+    .meta-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .meta-metric-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--line-subtle);
+      padding: 14px 18px;
+    }
+
+    .meta-metric-item > div:first-child {
+      font: 500 0.62rem var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .btn-goto-portal {
+      display: block;
+      width: 100%;
+      padding: 16px 20px;
+      background: var(--electric);
+      color: #050608;
+      text-decoration: none;
+      font: 700 0.72rem var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .btn-goto-portal:hover {
+      background: #c8ff5e;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <!-- 全局光标跟随微光 -->
+  <div class="pointer-glow" aria-hidden="true"></div>
+
+  <!-- 顶栏 -->
+  <header class="site-nav">
+    <a class="wordmark" href="/" aria-label="Aurora API home">
+      <span class="wordmark-mark">A/G</span>
+      <span>AURORA API</span>
+    </a>
+
+    <div class="nav-live-pill">
+      <span class="nav-live-dot"></span>
+      <span>FULFILLMENT SYSTEM</span>
+    </div>
+
+    <nav class="desktop-nav" aria-label="Primary navigation">
+      <a href="/">01 / Home</a>
+      <a href="/" class="button button-primary" style="min-height: 38px; padding: 0 18px; font-size: 0.72rem; letter-spacing: 0.06em;">
+        ⚡ 返回网关首页
+      </a>
+    </nav>
+  </header>
+
+  <!-- 核心提卡卡片 -->
+  <div class="claim-wrapper">
+    <div class="claim-card">
+      <div class="claim-eyebrow">
+        <span>●</span>
+        <span>ONE-ORDER-ONE-KEY · PERMANENT BINDING</span>
+      </div>
+
+      <h1 class="claim-title">
+        <span>Fulfillment,</span>
+        <span class="outline-type">Order by Order.</span>
+      </h1>
+
+      <p class="claim-desc">
+        输入您在面包多或爱发电支付成功的<strong>【订单号】</strong>，系统秒级提取强绑定的独立专享密钥。一人一密，终身独享。
+      </p>
+
+      <!-- 订单号输入区 -->
+      <div class="order-input-container">
+        <label class="order-input-label" for="order-id-input">
+          📋 请选择支付平台并输入付款订单号：
+        </label>
+        <div class="platform-tabs">
+          <button type="button" class="platform-tab-btn active" id="tab-auto" onclick="setClaimPlatform('auto')">⚡ 智能自动验真</button>
+          <button type="button" class="platform-tab-btn" id="tab-mbd" onclick="setClaimPlatform('mbd')">🍞 面包多 / 微信支付宝单号</button>
+          <button type="button" class="platform-tab-btn" id="tab-afdian" onclick="setClaimPlatform('afdian')">⚡ 爱发电订单号</button>
+        </div>
+        <div class="order-input-row">
+          <input
+            type="text"
+            id="order-id-input"
+            class="order-input-box"
+            placeholder="输入如 20260910... 或微信/支付宝商户订单号"
+          />
+          <button class="btn-submit-order" id="btn-submit-order" onclick="submitClaimOrder()">
+            🚀 验证并提取专属 Key
+          </button>
+        </div>
+
+        <div class="order-tips-box">
+          💡 <strong>去哪找订单号？</strong><br />
+          1. <strong>面包多买家</strong>：付款后页面、或打开面包多顶部【我的已购】复制订单号；亦可输入微信/支付宝的【商户订单号】。<br />
+          2. <strong>爱发电赞助者</strong>：在爱发电【订单中心】复制以 202... 开头的订单号。<br />
+          🔒 <strong>官方实时验真</strong>：系统直连平台官方接口确认真实付款，一单签发一卡并终身绑定，防冒领防盗刷。
+        </div>
+      </div>
+
+      <!-- 提货结果展示区 (默认隐藏) -->
+      <div class="key-result-glass" id="result-box">
+        <div style="font: 500 0.65rem var(--font-mono); color: var(--electric); text-transform: uppercase; margin-bottom: 6px;">
+          🔑 YOUR DEDICATED API KEY (一人一密·永久独享)
+        </div>
+
+        <div class="result-key-row">
+          <span class="result-key-val" id="key-text">sk-aurora-xxxx</span>
+          <button class="btn-action-copy" id="btn-copy-claim" onclick="copyKey(event)">📋 复制密钥</button>
+        </div>
+
+        <div class="meta-metrics-grid">
+          <div class="meta-metric-item">
+            <div>PURCHASED PACKAGE</div>
+            <strong id="pkg-name" style="color: #fff; font-size: 0.95rem;">🧪 1元极速联调包</strong>
+          </div>
+          <div class="meta-metric-item">
+            <div>AVAILABLE TOKENS</div>
+            <strong id="tokens-val" style="color: var(--electric); font-family: var(--font-mono); font-size: 0.95rem;">300,000 Tokens</strong>
+          </div>
+          <div class="meta-metric-item" style="grid-column: span 2;">
+            <div>OPENAI BASE URL</div>
+            <code style="color: var(--electric); font-family: var(--font-mono); font-size: 0.85rem;" id="base-url-text">http://localhost:3005/v1</code>
+          </div>
+        </div>
+
+        <button class="btn-goto-portal" onclick="applyAndGoHome()">
+          ⚡ 一键同步至控制台并开始体验 ➔
+        </button>
+      </div>
+
+      <!-- 接入指南 -->
+      <div style="margin-top: 28px; padding: 22px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); line-height: 1.8;">
+        <strong style="color: #fff; display: block; margin-bottom: 8px; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase;">
+          🚀 QUICK INTEGRATION:
+        </strong>
+        在 <strong>Cursor</strong>、<strong>VS Code</strong>、<strong>NextChat</strong> 中，将 <strong>Base URL</strong> 填入 <code style="color: var(--electric); font-family: var(--font-mono);" id="guide-base-url">http://localhost:3005/v1</code>，密钥填入上方提取的专属 Key，即可直连大模型！
+      </div>
+    </div>
+  </div>
+
+  <!-- 吐司通知弹窗 -->
+  <div class="modern-toast" id="modern-toast">
+    <span id="toast-icon">📋</span>
+    <span id="toast-msg">已复制到剪贴板！</span>
+  </div>
+
+  <script>
+    let assignedKey = ''
+
+    function getGatewayUrl() {
+      const custom = localStorage.getItem('aurora_gateway_url')
+      if (custom && custom.trim()) return custom.trim().replace(/\/+$/, '')
+      return window.location.origin
+    }
+
+    // 光标跟踪
+    function initPointerGlow() {
+      document.documentElement.style.setProperty('--pointer-x', '50vw')
+      document.documentElement.style.setProperty('--pointer-y', '35vh')
+
+      const moveGlow = (e) => {
+        document.documentElement.style.setProperty('--pointer-x', `${e.clientX}px`)
+        document.documentElement.style.setProperty('--pointer-y', `${e.clientY}px`)
+      }
+      window.addEventListener('pointermove', moveGlow, { passive: true })
+    }
+
+    // 吐司通知
+    let toastTimer = null
+    function showToast(message, icon = '✨', duration = 2500) {
+      const toast = document.getElementById('modern-toast')
+      const toastMsg = document.getElementById('toast-msg')
+      const toastIcon = document.getElementById('toast-icon')
+      if (!toast || !toastMsg) return
+
+      if (toastTimer) clearTimeout(toastTimer)
+      toastMsg.innerText = message
+      if (toastIcon) toastIcon.innerText = icon
+      toast.classList.add('show')
+
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show')
+      }, duration)
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initPointerGlow()
+
+      const gateway = getGatewayUrl()
+      document.getElementById('base-url-text').innerText = `${gateway}/v1`
+      document.getElementById('guide-base-url').innerText = `${gateway}/v1`
+
+      const params = new URLSearchParams(window.location.search)
+      const urlOrder = params.get('order') || params.get('orderId') || ''
+      const urlPlatform = params.get('platform') || ''
+      if (urlPlatform) setClaimPlatform(urlPlatform)
+
+      if (urlOrder) {
+        document.getElementById('order-id-input').value = urlOrder
+        submitClaimOrder()
+      }
+    })
+
+    let currentPlatform = 'auto'
+    function setClaimPlatform(plat) {
+      currentPlatform = plat
+      document.querySelectorAll('.platform-tab-btn').forEach((btn) => btn.classList.remove('active'))
+      const target = document.getElementById(`tab-${plat}`)
+      if (target) target.classList.add('active')
+    }
+
+    async function submitClaimOrder() {
+      const orderInput = document.getElementById('order-id-input')
+      const orderId = (orderInput.value || '').trim()
+      const btn = document.getElementById('btn-submit-order')
+
+      if (!orderId) {
+        showToast('请输入您的付款订单号！', '⚠️')
+        orderInput.focus()
+        return
+      }
+
+      btn.innerText = '⏳ 官方接口实时验真中...'
+      btn.disabled = true
+
+      try {
+        const res = await fetch(`${getGatewayUrl()}/api/card/claim`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, platform: currentPlatform, packageId: 'pkg_test' })
+        })
+        const data = await res.json()
+
+        if (!data.ok) {
+          showToast(data.error || '未查到对应有效订单，请检查订单号', '❌', 4000)
+          return
+        }
+
+        assignedKey = data.key
+        localStorage.setItem('aurora_api_key', assignedKey)
+
+        const gateway = getGatewayUrl()
+        document.getElementById('base-url-text').innerText = `${gateway}/v1`
+        document.getElementById('guide-base-url').innerText = `${gateway}/v1`
+
+        document.getElementById('key-text').innerText = assignedKey
+        document.getElementById('pkg-name').innerText = data.packageName || '1元极速联调包'
+        document.getElementById('tokens-val').innerText = `${Number(data.tokens).toLocaleString()} Tokens`
+
+        const resultBox = document.getElementById('result-box')
+        resultBox.style.display = 'block'
+        resultBox.scrollIntoView({ behavior: 'smooth' })
+        showToast('🎉 官方验证通过！专属 Key 已签发强绑定', '🎉')
+      } catch (err) {
+        showToast(`网络请求异常: ${err.message}`, '❌')
+      } finally {
+        btn.innerText = '🚀 验证并提取专属 Key'
+        btn.disabled = false
+      }
+    }
+
+    function copyKey(e) {
+      if (!assignedKey) return
+      navigator.clipboard.writeText(assignedKey).then(() => {
+        const btn = e?.currentTarget || document.getElementById('btn-copy-claim')
+        if (btn) {
+          const orig = btn.innerText
+          btn.innerText = '✓ COPIED'
+          btn.classList.add('btn-copied-success')
+          setTimeout(() => {
+            btn.innerText = orig
+            btn.classList.remove('btn-copied-success')
+          }, 1800)
+        }
+        showToast('专属 API Key 已复制到剪贴板！', '📋')
+      })
+    }
+
+    function applyAndGoHome() {
+      if (assignedKey) {
+        localStorage.setItem('aurora_api_key', assignedKey)
+      }
+      window.location.href = '/'
+    }
+  </script>
+</body>
+</html>

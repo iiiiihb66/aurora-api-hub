@@ -1,0 +1,1284 @@
+/* ==========================================================
+   🌌 AURORA API · Modern Cinema & Editorial Brutalist Design
+   Design Benchmark: Vancouver AI Film Project (Northframe Concept)
+   Typography: Manrope, Inter, DM Mono
+   Palette: Obsidian (#050608), Electric Lime (#b8ff38), Alabaster (#eff0ea)
+   Features: Pointer Glow, Cinematic Hero Wash, Hollow Outline Typography,
+             Inverted Contrast Editorial Section, 3D Orbit Matrix, Glass Modals
+   ========================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  font-family: "Manrope", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #f4f5f7;
+  background: #050608;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+
+  /* 核心色彩系统 (温哥华AI短剧项目精调) */
+  --paper: #050608;
+  --paper-card: #080a0d;
+  --paper-elevated: #0f1218;
+  --ink: #f4f5f7;
+  --muted: #92969f;
+  --sub: #64676a;
+  --line: rgba(255, 255, 255, 0.14);
+  --line-subtle: rgba(255, 255, 255, 0.08);
+
+  /* 标志性高压电光色彩 */
+  --electric: #b8ff38;       /* 标志性荧光青柠绿 */
+  --electric-glow: rgba(184, 255, 56, 0.25);
+  --blue: #6c8cff;
+  --amber: #ff9438;
+  --coral: #ff6b58;
+  --cyan: #2de1d2;
+  --violet: #b081ff;
+
+  /* 版心与尺寸 */
+  --max: 1560px;
+  --pointer-x: 50vw;
+  --pointer-y: 35vh;
+
+  /* 字体族 */
+  --font-display: 'Manrope', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+button, a, input, select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+::selection {
+  color: #050608;
+  background: var(--electric);
+}
+
+/* ==========================================================
+   1. 全局光标跟随微光 (Pointer Glow - Screen Blend)
+   ========================================================== */
+.pointer-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background: radial-gradient(
+    380px circle at var(--pointer-x) var(--pointer-y),
+    rgba(184, 255, 56, 0.075),
+    transparent 68%
+  );
+  mix-blend-mode: screen;
+}
+
+.site-shell {
+  position: relative;
+  overflow: clip;
+}
+
+.page-width {
+  width: min(calc(100% - 96px), var(--max));
+  margin: 0 auto;
+}
+
+/* ==========================================================
+   2. 极简黑曜石悬浮顶栏 (Minimalist Site Nav)
+   ========================================================== */
+.site-nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: 76px;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(5, 6, 8, 0.88), rgba(5, 6, 8, 0.2) 75%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.wordmark-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #050608;
+  background: var(--electric);
+  letter-spacing: -0.05em;
+  font-weight: 900;
+  font-size: 0.82rem;
+  box-shadow: 0 0 20px var(--electric-glow);
+}
+
+.nav-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.nav-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--electric);
+  box-shadow: 0 0 12px var(--electric);
+}
+
+.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  font: 500 0.72rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.desktop-nav a {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.25s ease;
+}
+
+.desktop-nav a:hover {
+  color: var(--electric);
+}
+
+.desktop-nav .button-primary {
+  color: #050608 !important;
+  font-weight: 800 !important;
+}
+
+.desktop-nav .button-primary:hover {
+  color: #050608 !important;
+}
+
+.nav-btn-highlight {
+  color: var(--electric) !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==========================================================
+   3. 电影级巨幕 Hero 核心区域 (Cinematic Hero)
+   ========================================================== */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+  background: #070a0f;
+  padding-bottom: 72px;
+}
+
+.hero-image {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  object-position: center 57%;
+  filter: saturate(0.74) contrast(1.15) brightness(0.68);
+  pointer-events: none;
+}
+
+.hero-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(5, 6, 8, 0.94) 0%, rgba(5, 6, 8, 0.65) 45%, rgba(5, 6, 8, 0.15) 75%),
+    linear-gradient(180deg, rgba(5, 6, 8, 0.2), rgba(5, 6, 8, 0.35) 55%, #050608 100%);
+  pointer-events: none;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 10vw 10vw;
+  mask-image: linear-gradient(to right, black, transparent 72%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding-top: 140px;
+  max-width: 1300px;
+}
+
+.hero-kicker, .eyebrow {
+  margin: 0 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 0.68rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.hero-kicker span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--electric);
+  box-shadow: 0 0 22px var(--electric);
+}
+
+.hero-title {
+  margin: 0;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-size: clamp(3.8rem, 8.5vw, 8.8rem);
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+  font-weight: 700;
+}
+
+.hero-title span {
+  display: block;
+}
+
+/* 标志性空心描边大字 (温哥华项目核心特征) */
+.outline-type {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.78);
+}
+
+.hero-copy {
+  max-width: 620px;
+  margin: 32px 0 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.hero-copy strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.hero-actions {
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+/* 按钮系统 */
+.button {
+  min-height: 52px;
+  padding: 0 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  border: 1px solid transparent;
+  font: 600 0.72rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+.button-primary {
+  color: #050608 !important;
+  font-weight: 800 !important;
+  background: var(--electric);
+  box-shadow: 0 4px 25px rgba(184, 255, 56, 0.35);
+}
+
+.button-primary:hover {
+  color: #050608 !important;
+  background: #c8ff5e;
+  box-shadow: 0 6px 30px rgba(184, 255, 56, 0.5);
+}
+
+.button-ghost {
+  border-color: var(--line);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+}
+
+.button-ghost:hover {
+  border-color: var(--electric);
+  color: var(--electric);
+  background: rgba(184, 255, 56, 0.05);
+}
+
+.text-link {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  font: 500 0.72rem var(--font-mono);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  padding-bottom: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.2s ease;
+}
+
+.text-link:hover {
+  color: var(--electric);
+  border-color: var(--electric);
+}
+
+/* 4列硬核技术指标栏 (Hero Rail) */
+.hero-rail {
+  margin-top: 60px;
+  padding-top: 22px;
+  width: min(100%, 1020px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font: 500 0.64rem var(--font-mono);
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-rail strong {
+  display: block;
+  color: #fff;
+  font-size: 0.72rem;
+  margin-top: 4px;
+}
+
+/* 垂直滚动提示 */
+.scroll-cue {
+  position: absolute;
+  right: 48px;
+  bottom: 44px;
+  z-index: 3;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  writing-mode: vertical-rl;
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.scroll-cue i {
+  width: 1px;
+  height: 58px;
+  background: linear-gradient(var(--electric), transparent);
+}
+
+/* ==========================================================
+   4. 核心端点与凭证控制卡片 (Brutalist Endpoint Bar)
+   ========================================================== */
+.endpoint-rail-box {
+  margin-top: 42px;
+  background: rgba(8, 10, 13, 0.85);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.endpoint-rail-cell {
+  padding: 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.endpoint-rail-cell:first-child {
+  border-right: 1px solid var(--line);
+}
+
+.rail-cell-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 500 0.65rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rail-cell-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-rail-action {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  font: 500 0.62rem var(--font-mono);
+  color: #fff;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.btn-rail-action:hover {
+  background: var(--electric);
+  color: #050608;
+  border-color: var(--electric);
+}
+
+.rail-code-val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--electric);
+  word-break: break-all;
+}
+
+/* ==========================================================
+.section-number {
+  font: 500 0.72rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ==========================================================
+   6. 算力包选购矩阵 (Pricing & Capacity Index)
+   ========================================================== */
+.work-section {
+  padding: 100px 0 160px;
+  background: #080a0d;
+  border-top: 1px solid var(--line);
+}
+
+.work-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.work-heading h2, .process-title h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.8rem, 7.5vw, 8rem);
+  line-height: 0.88;
+  letter-spacing: -0.065em;
+  font-weight: 600;
+}
+
+.work-heading > p {
+  max-width: 420px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+/* 过滤圆角药丸条 */
+.filter-bar {
+  margin-top: 54px;
+  padding: 16px 0;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.filter-bar button {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  font: 500 0.68rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.filter-bar button.active {
+  color: #050608;
+  background: var(--electric);
+}
+
+.filter-bar sup {
+  margin-left: 5px;
+  font-size: 0.52rem;
+}
+
+/* 算力卡片网格 */
+.pricing-grid {
+  padding-top: 36px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.pricing-card {
+  background: rgba(13, 17, 24, 0.7);
+  border: 1px solid var(--line);
+  padding: 36px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, background 0.3s ease;
+}
+
+.pricing-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--electric);
+  background: rgba(18, 24, 34, 0.9);
+}
+
+.pricing-card.card-featured {
+  border: 1.5px solid var(--electric);
+  background: rgba(18, 26, 32, 0.85);
+  box-shadow: 0 0 40px rgba(184, 255, 56, 0.15);
+}
+
+.card-top-indicator {
+  font: 500 0.64rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--electric);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pkg-name-text {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+  color: #fff;
+}
+
+.pkg-price-large {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.price-currency-sym {
+  font-size: 1.2rem;
+  color: var(--muted);
+}
+
+.price-big-number {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+
+.price-validity-tag {
+  font: 500 0.65rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.pkg-tokens-box {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-subtle);
+  margin-bottom: 22px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--electric);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pkg-feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pkg-feature-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.pkg-feature-list li::before {
+  content: '→';
+  color: var(--electric);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.btn-purchase-card {
+  width: 100%;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  font: 600 0.7rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.pricing-card:hover .btn-purchase-card,
+.pricing-card.card-featured .btn-purchase-card {
+  background: var(--electric);
+  color: #050608;
+  border-color: var(--electric);
+}
+
+/* ==========================================================
+   7. 官方精选模型矩阵 (3D Wireframe Orbit Matrix)
+   ========================================================== */
+.formats {
+  padding: 130px 0 170px;
+  border-top: 1px solid var(--line);
+}
+
+.format-grid {
+  margin-top: 52px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.format-grid article {
+  min-height: 340px;
+  padding: 34px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transition: background 0.35s ease, border-color 0.35s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.format-grid article:hover {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: var(--electric);
+}
+
+/* 标志性 3D 旋转线框轨道 (温哥华项目标志性动效) */
+.format-orbit {
+  position: relative;
+  margin: 0 auto auto;
+  width: 110px;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  animation: orbit 14s linear infinite;
+}
+
+.format-orbit::before, .format-orbit::after {
+  content: "";
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(184, 255, 56, 0.45);
+  border-radius: 50%;
+  transform: rotateX(70deg);
+}
+
+.format-orbit::after {
+  transform: rotateY(70deg);
+}
+
+.format-orbit i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--electric);
+  box-shadow: 0 0 22px var(--electric);
+}
+
+@keyframes orbit {
+  to { transform: rotate(360deg); }
+}
+
+.model-article-bottom {
+  margin-top: 24px;
+}
+
+.model-article-id {
+  font: 500 0.7rem var(--font-mono);
+  color: var(--electric);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.format-grid h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.format-grid p {
+  margin: 8px 0 0;
+  font: 400 0.82rem var(--font-body);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.model-rate-tag {
+  display: inline-block;
+  margin-top: 12px;
+  font: 500 0.62rem var(--font-mono);
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+   8. 标志性白底反转高对比章节 (Inverted Editorial Section)
+   温哥华项目的核心设计灵魂：极暗到极亮的杂志感突变
+   ========================================================== */
+.process-section {
+  padding: 150px 0;
+  background: #eff0ea;
+  color: #0c0d0f;
+}
+
+.process-sticky {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 8vw;
+  align-items: start;
+}
+
+.process-title {
+  position: sticky;
+  top: 130px;
+}
+
+.process-title .eyebrow {
+  color: #526e1c;
+}
+
+.process-title h2 {
+  font-size: clamp(3.6rem, 6.5vw, 6.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  color: #0c0d0f;
+}
+
+.process-list {
+  border-top: 1px solid rgba(0, 0, 0, 0.22);
+}
+
+.process-step {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px 24px;
+  padding: 32px 0 40px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.22);
+}
+
+.process-step > span {
+  grid-row: span 2;
+  font: 500 0.72rem var(--font-mono);
+  color: #526e1c;
+}
+
+.process-step h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.3vw, 2.3rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: #0c0d0f;
+}
+
+.process-step p {
+  margin: 0;
+  max-width: 580px;
+  color: #525558;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.process-code-inline {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  border-radius: 4px;
+  color: #1a1a1a;
+}
+
+/* ==========================================================
+   9. macOS 拟真 Dark IDE 交互终端 (Playground Section)
+   ========================================================== */
+.playground-section {
+  padding: 120px 0 160px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.ide-terminal-wrapper {
+  margin-top: 48px;
+  background: #020408;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9);
+}
+
+.ide-title-bar {
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ide-mac-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.mac-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.dot-close { background: #ff5f56; }
+.dot-min { background: #ffbd2e; }
+.dot-max { background: #27c93f; }
+
+.ide-tab-label {
+  font: 500 0.65rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ide-body {
+  padding: 28px;
+}
+
+.ide-control-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.ide-prompt-symbol {
+  font: 500 0.72rem var(--font-mono);
+  color: var(--electric);
+  white-space: nowrap;
+}
+
+.ide-select, .ide-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: #fff;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.ide-select:focus, .ide-input:focus {
+  border-color: var(--electric);
+}
+
+.ide-input {
+  flex: 1;
+}
+
+.btn-ide-run {
+  padding: 10px 22px;
+  background: var(--electric);
+  color: #050608;
+  font: 700 0.72rem var(--font-mono);
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-ide-run:hover {
+  background: #c8ff5e;
+  transform: translateY(-1px);
+}
+
+.ide-output-screen {
+  background: #010204;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 22px;
+  min-height: 200px;
+  max-height: 480px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.7;
+  color: #f1f5f9;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ==========================================================
+   10. 底部呼吁与页脚 (Contact & Footer)
+   ========================================================== */
+.contact-section {
+  position: relative;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+
+.contact-bg {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 65% 48%, rgba(108, 140, 255, 0.22), transparent 32%),
+    radial-gradient(circle at 72% 55%, rgba(184, 255, 56, 0.12), transparent 22%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.contact-inner {
+  position: relative;
+  z-index: 1;
+  padding: 100px 0;
+}
+
+.contact-inner h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.8rem, 8.5vw, 9rem);
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+  font-weight: 600;
+}
+
+.contact-inner h2 span {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.6);
+}
+
+.contact-copy {
+  max-width: 580px;
+  margin: 34px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 1.05rem;
+}
+
+.contact-action {
+  margin-top: 64px;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+  font: 500 0.68rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.footer {
+  min-height: 100px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 40px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  font: 500 0.62rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+   11. 现代黑曜石玻璃模态框与 Toast
+   ========================================================== */
+.glass-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 8, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-modal-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.glass-modal-card {
+  width: 100%;
+  max-width: 540px;
+  background: #080b10;
+  border: 1px solid var(--line);
+  padding: 32px 36px;
+  color: #fff;
+  position: relative;
+  transform: scale(0.95) translateY(16px);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95);
+}
+
+.glass-modal-backdrop.show .glass-modal-card {
+  transform: scale(1) translateY(0);
+}
+
+.glass-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.glass-modal-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.glass-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.glass-modal-close:hover {
+  border-color: #ff5f56;
+  color: #ff5f56;
+}
+
+.glass-modal-body {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.glass-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.btn-modal-cancel {
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  font: 500 0.68rem var(--font-mono);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.btn-modal-confirm {
+  padding: 10px 24px;
+  background: var(--electric);
+  color: #050608;
+  font: 700 0.68rem var(--font-mono);
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-top: 12px;
+  background: #020408;
+  border: 1px solid var(--line);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.modal-input:focus {
+  border-color: var(--electric);
+}
+
+/* 吐司通知 */
+.modern-toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: #080b10;
+  border: 1px solid var(--electric);
+  color: #fff;
+  padding: 12px 24px;
+  font: 500 0.72rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 3000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(184, 255, 56, 0.2);
+}
+
+.modern-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.btn-copied-success {
+  background: var(--electric) !important;
+  color: #050608 !important;
+  border-color: var(--electric) !important;
+}
+
+/* ==========================================================
+   12. 响应式布局媒体查询 (Mobile Breakpoints)
+   ========================================================== */
+@media (max-width: 980px) {
+  .page-width { width: min(calc(100% - 48px), var(--max)); }
+  .site-nav { padding: 0 24px; }
+  .desktop-nav { display: none; }
+  .hero-title { font-size: clamp(3.6rem, 12vw, 6.8rem); }
+  .hero-rail { grid-template-columns: repeat(2, 1fr); }
+  .scroll-cue { display: none; }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .format-grid { grid-template-columns: 1fr; }
+  .process-sticky { grid-template-columns: 1fr; gap: 40px; }
+  .process-title { position: static; }
+  .endpoint-rail-box { grid-template-columns: 1fr; }
+  .endpoint-rail-cell:first-child { border-right: none; border-bottom: 1px solid var(--line); }
+}
+
+@media (max-width: 640px) {
+  .page-width { width: min(calc(100% - 32px), var(--max)); }
+  .site-nav { height: 66px; padding: 0 16px; }
+  .wordmark-mark { width: 32px; height: 32px; }
+  .hero-content { padding-top: 110px; padding-bottom: 40px; }
+  .hero { min-height: 800px; }
+  .hero-title { font-size: clamp(3.2rem, 16vw, 5.2rem); }
+  .hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .hero-rail { grid-template-columns: 1fr; gap: 10px; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .process-section { padding: 90px 0; }
+  .footer { grid-template-columns: 1fr; gap: 14px; padding: 30px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pointer-glow { display: none; }
+}

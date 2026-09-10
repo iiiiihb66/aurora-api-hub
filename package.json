@@ -1,0 +1,16 @@
+{
+  "name": "aurora-api-hub",
+  "version": "1.0.0",
+  "description": "极光 API · 专为开发者与学生打造的高可用 AI 算力水龙头分发平台",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
