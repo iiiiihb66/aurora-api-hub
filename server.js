@@ -108,17 +108,41 @@ function routeUpstreamTarget(reqModel = '', messages = []) {
       low.includes('gpt-4o') ||
       low.includes('gpt-5') ||
       low.includes('gpt-6') ||
-      low.includes('claude-3') ||
-      low.includes('claude-sonnet') ||
-      low.includes('claude-opus')
+      low.includes('claude') ||
+      low.includes('vl') ||
+      low.includes('vision')
 
     if (!isVisionCapable) {
-      console.log(`[智能视觉升配] 检测到图片输入，原模型【${reqModel}】自动升配为【claude-sonnet-4-6】视觉通道`)
+      // 1.1 中文/国产模型生态 (DeepSeek, Qwen, 豆包, Kimi, GLM) ➔ 同系平滑升配至国产视觉
+      if (low.includes('deepseek') || low.includes('qwen') || low.includes('doubao') || low.includes('seed') || low.includes('kimi') || low.includes('glm')) {
+        console.log(`[智能视觉升配] 检测到图片输入，原国产模型【${reqModel}】同系升配为【doubao-seed-2-0-pro-260215】中文多模态视觉通道`)
+        return {
+          upstreamModel: 'doubao-seed-2-0-pro-260215',
+          keyGroup: 'domestic',
+          tokenMultiplier: 1.0,
+          routedNote: '国产中文多模态视觉同系升配专线 (豆包/千问视觉 0.50x 特价)',
+        }
+      }
+
+      // 1.2 编程/代码生态 (Coder, Code) ➔ 升配至 Claude 3.7 Sonnet 代码 OCR 专线 (5厘钱)
+      if (low.includes('coder') || low.includes('code')) {
+        console.log(`[智能视觉升配] 检测到图片输入，原代码模型【${reqModel}】升配为【claude-sonnet-4-6】代码OCR视觉通道`)
+        return {
+          upstreamModel: 'claude-sonnet-4-6',
+          keyGroup: 'kiro',
+          tokenMultiplier: 1.0,
+          routedNote: 'Claude 3.7/Sonnet 代码与报错 OCR 视觉专线 (Gemiaude 5厘钱直通)',
+        }
+      }
+
+      // 1.3 默认/通用纯文本模型 ➔ 升配至全网性价比与上下文之王 Gemini 3.7 Flash
+      // 优势：极低 Token 消耗、自带 100万~200万 超大上下文窗口（长对话与高清大图不截断）、毫秒级首字响应
+      console.log(`[智能视觉升配] 检测到图片输入，原纯文本模型【${reqModel}】升配为【gemini-3.7-flash】极速低成本视觉专线`)
       return {
-        upstreamModel: 'claude-sonnet-4-6',
-        keyGroup: 'special',
+        upstreamModel: 'gemini-3.7-flash',
+        keyGroup: 'default',
         tokenMultiplier: 1.0,
-        routedNote: 'Claude 3.7/Sonnet 超清多模态视觉专线',
+        routedNote: 'Gemini 3.7 Flash 极速低成本视觉专线 (200万超大上下文)',
       }
     }
   }

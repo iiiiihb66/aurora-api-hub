@@ -254,20 +254,89 @@ function sanitizeUpstreamError(input) {
   return input;
 }
 
-function routeUpstreamTarget(reqModel) {
-  const low = (reqModel || "").toLowerCase();
+function hasImageContent(messages = []) {
+  if (!Array.isArray(messages)) return false;
+  for (const msg of messages) {
+    if (!msg) continue;
+    if (Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part && (part.type === "image_url" || part.image_url || part.type === "image")) {
+          return true;
+        }
+      }
+    } else if (typeof msg.content === "string") {
+      if (msg.content.includes("data:image/") || (msg.content.includes("http") && /\.(jpg|jpeg|png|webp|gif)/i.test(msg.content))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function routeUpstreamTarget(reqModel = "", messages = []) {
+  const isImage = hasImageContent(messages);
+  const low = (reqModel || "").toLowerCase().trim();
+
+  // 1. 智能视觉升配逻辑（当消息中包含图片/截图时）
+  if (isImage) {
+    const isVisionCapable =
+      low.includes("gemini") ||
+      low.includes("gpt-4o") ||
+      low.includes("gpt-5") ||
+      low.includes("gpt-6") ||
+      low.includes("claude") ||
+      low.includes("vl") ||
+      low.includes("vision");
+
+    if (!isVisionCapable) {
+      // 1.1 中文/国产模型生态 (DeepSeek, Qwen, 豆包, Kimi, GLM) ➔ 同系平滑升配至国产视觉
+      if (low.includes("deepseek") || low.includes("qwen") || low.includes("doubao") || low.includes("seed") || low.includes("kimi") || low.includes("glm")) {
+        return {
+          upstreamModel: "doubao-seed-2-0-pro-260215",
+          keyGroup: "domestic",
+          tokenMultiplier: 1.0,
+          note: "国产中文多模态视觉同系升配专线 (豆包/千问视觉 0.50x 特价)",
+        };
+      }
+
+      // 1.2 编程/代码生态 (Coder, Code) ➔ 升配至 Claude 3.7 Sonnet 代码 OCR 专线 (5厘钱)
+      if (low.includes("coder") || low.includes("code")) {
+        return {
+          upstreamModel: "claude-sonnet-4-6",
+          keyGroup: "kiro",
+          tokenMultiplier: 1.0,
+          note: "Claude 3.7/Sonnet 代码与报错 OCR 视觉专线 (Gemiaude 5厘钱直通)",
+        };
+      }
+
+      // 1.3 默认/通用纯文本模型 ➔ 升配至全网性价比与上下文之王 Gemini 3.7 Flash (200万超大上下文)
+      return {
+        upstreamModel: "gemini-3.7-flash",
+        keyGroup: "default",
+        tokenMultiplier: 1.0,
+        note: "Gemini 3.7 Flash 极速低成本视觉专线 (200万超大上下文)",
+      };
+    }
+  }
+
+  // 2. 正常文本与特定模型智能调度
   const matched = AURORA_MODELS.find((m) => m.id.toLowerCase() === low);
   const upstreamModel = matched ? matched.upstreamModel : reqModel;
   const multiplier = matched ? matched.tokenMultiplier : 1.0;
 
-  if (low.includes("claude")) {
-    return { upstreamModel, keyGroup: "special", tokenMultiplier: multiplier, note: "Claude 官方特价专线" };
+  if (low.includes("coder") || low.includes("claude")) {
+    let target = low.includes("opus") ? "claude-opus-4-7" : "claude-sonnet-4-6";
+    return { upstreamModel: target, keyGroup: "kiro", tokenMultiplier: multiplier, note: "Claude 3.7/Sonnet 编程专线 (5厘钱直通 / 阿福保底)" };
+  }
+  if (low.includes("grok")) {
+    let target = low.includes("4.5") ? "grok-4.5" : "grok-4.6";
+    return { upstreamModel: target, keyGroup: "grok", tokenMultiplier: multiplier, note: "xAI Grok 4.6 极速问答专线 (3厘钱直通 / 阿福保底)" };
   }
   if (low.startsWith("gpt-6") || low.startsWith("gpt-5") || low.startsWith("gpt-4") || low.includes("aurora-chat")) {
     return { upstreamModel, keyGroup: "discount", tokenMultiplier: multiplier, note: "OpenAI 海外特惠专线 (0.08x)" };
   }
   if (low.includes("deepseek") || low.includes("doubao") || low.includes("minimax") || low.includes("kimi") || low.includes("glm")) {
-    return { upstreamModel, keyGroup: "domestic", tokenMultiplier: multiplier, note: "国产一线高并发专线" };
+    return { upstreamModel, keyGroup: "domestic", tokenMultiplier: multiplier, note: "国产一线高并发专线 (0.50x 特价)" };
   }
   return { upstreamModel, keyGroup: "default", tokenMultiplier: multiplier, note: "全球高可用默认专线" };
 }
@@ -550,7 +619,7 @@ export default {
           }, 402);
         }
 
-        const route = routeUpstreamTarget(model);
+        const route = routeUpstreamTarget(model, messages);
         const afuBase = env?.AFU_API_BASE || "https://api.afugpt.cn/v1";
         const imageBase = env?.IMAGE_API_BASE || "https://oneapi.gemiaude.com/v1";
         const imageKey = env?.IMAGE_API_KEY || "sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy";
