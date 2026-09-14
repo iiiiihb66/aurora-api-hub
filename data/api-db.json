@@ -2,15 +2,21 @@
   "cards": {
     "sk-aurora-demo-8888": {
       "code": "sk-aurora-demo-8888",
-      "status": "ACTIVE",
-      "totalTokens": 4000000,
-      "remainingTokens": 3996551,
-      "usedTokens": 3449,
+      "status": "RETIRED",
+      "totalTokens": 0,
+      "remainingTokens": 0,
+      "usedTokens": 25853,
       "totalCredits": 100,
       "remainingCredits": 100,
       "usedCredits": 0,
       "remark": "极光首发体验 Key (200万 Tokens)",
-      "createdAt": "2026-09-09T00:00:00.000Z"
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "lastCallInfo": {
+        "model": "gemini-3.7-flash",
+        "costTokens": 178,
+        "time": "11:28:45",
+        "routedNote": "Gemini 3.7 Flash 高速专线"
+      }
     },
     "sk-aurora-fd6f39bde9d2c694": {
       "code": "sk-aurora-fd6f39bde9d2c694",
@@ -281,12 +287,18 @@
       "packageId": "pkg_test",
       "packageName": "🧪 1元极速联调包",
       "totalTokens": 300000,
-      "remainingTokens": 300000,
-      "usedTokens": 0,
+      "remainingTokens": 298866,
+      "usedTokens": 1134,
       "remark": "面包多1元测试包自动发卡·🧪 1元极速联调包",
       "createdAt": "2026-09-10T05:38:01.612Z",
       "claimedAt": "2026-09-10T09:01:47.856Z",
-      "boundOrderId": "localhost:3005"
+      "boundOrderId": "localhost:3005",
+      "lastCallInfo": {
+        "model": "gemini-3.7-flash",
+        "costTokens": 1134,
+        "time": "11:21:55",
+        "routedNote": "Gemini 3.7 Flash 高速专线"
+      }
     },
     "sk-aurora-62da90968d826771": {
       "code": "sk-aurora-62da90968d826771",
@@ -547,10 +559,16 @@
       "packageId": "pkg_standard",
       "packageName": "主力畅享包",
       "totalTokens": 7000000,
-      "remainingTokens": 7000000,
-      "usedTokens": 0,
+      "remainingTokens": 6114635,
+      "usedTokens": 885365,
       "remark": "面包多自动发卡·主力畅享包",
-      "createdAt": "2026-09-10T09:27:24.039Z"
+      "createdAt": "2026-09-10T09:27:24.039Z",
+      "lastCallInfo": {
+        "model": "gpt-image-2",
+        "costTokens": 2018,
+        "time": "10:57:17",
+        "routedNote": "GPT Image 2 商业级生图专线 (0.035元低价直通 / 阿福保底)"
+      }
     }
   },
   "orders": {
@@ -593,6 +611,36 @@
       "assignedKey": "sk-aurora-demo-8888",
       "status": "PENDING",
       "createdAt": "2026-09-09T06:41:14.838Z"
+    },
+    "AURORA_1789101725534_303": {
+      "outTradeNo": "AURORA_1789101725534_303",
+      "packageId": "pkg_standard",
+      "packageName": "🔥 主力畅享包",
+      "tokens": 7000000,
+      "price": 15,
+      "assignedKey": "sk-aurora-20ecfabd39d275ea",
+      "status": "PENDING",
+      "createdAt": "2026-09-11T04:42:05.538Z"
+    },
+    "AURORA_1789101734931_374": {
+      "outTradeNo": "AURORA_1789101734931_374",
+      "packageId": "pkg_trial",
+      "packageName": "🚀 极客体验包",
+      "tokens": 2000000,
+      "price": 5,
+      "assignedKey": "sk-aurora-3b588f576a36da57",
+      "status": "PENDING",
+      "createdAt": "2026-09-11T04:42:14.932Z"
+    },
+    "AURORA_1789101740973_862": {
+      "outTradeNo": "AURORA_1789101740973_862",
+      "packageId": "pkg_pro",
+      "packageName": "⚡ 极客狂飙包",
+      "tokens": 16000000,
+      "price": 29.9,
+      "assignedKey": "sk-aurora-9d45416695eca662",
+      "status": "PENDING",
+      "createdAt": "2026-09-11T04:42:20.974Z"
     }
   }
 }

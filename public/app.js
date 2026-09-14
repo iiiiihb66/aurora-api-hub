@@ -5,7 +5,12 @@
 // ==========================================================
 
 // 1. 基础状态管理
-let currentKey = localStorage.getItem('aurora_api_key') || 'sk-aurora-demo-8888'
+// 1. 基础状态管理：全面采用专属密钥体系，杜绝公共池被薅羊毛
+let currentKey = localStorage.getItem('aurora_api_key') || ''
+if (currentKey === 'sk-aurora-demo-8888') {
+  currentKey = ''
+  localStorage.removeItem('aurora_api_key')
+}
 
 // 获取配置的网关基础地址 (优先读取用户自定义网关，默认相对路径或当前主机)
 function getGatewayUrl() {
@@ -25,11 +30,26 @@ function initApp() {
   const baseUrlEl = document.getElementById('display-base-url')
   const currentKeyEl = document.getElementById('display-current-key')
   const statusTitleEl = document.getElementById('card-status-title')
+  const remainingEl = document.getElementById('stat-remaining-tokens')
+  const usedEl = document.getElementById('stat-used-tokens')
+  const remarkEl = document.getElementById('card-remark')
 
   const baseUrl = getBaseUrl()
   if (baseUrlEl) baseUrlEl.innerText = baseUrl
-  if (currentKeyEl) currentKeyEl.innerText = currentKey
-  if (statusTitleEl) statusTitleEl.innerText = `当前密钥：${currentKey}`
+
+  if (currentKey) {
+    if (currentKeyEl) currentKeyEl.innerText = currentKey
+    if (statusTitleEl) statusTitleEl.innerText = `当前密钥：${currentKey}`
+    fetchKeyBalance()
+  } else {
+    if (currentKeyEl) {
+      currentKeyEl.innerHTML = `<span style="color: #f59e0b; cursor: pointer; text-decoration: underline;" onclick="promptSwitchKey()">⚠️ 未绑定专属密钥 (点击绑定)</span>`
+    }
+    if (statusTitleEl) statusTitleEl.innerHTML = `<span style="color: #f59e0b;">⚠️ 尚未绑定专属 API Key</span>`
+    if (remainingEl) remainingEl.innerText = `-- Tokens`
+    if (usedEl) usedEl.innerText = `0 Tokens`
+    if (remarkEl) remarkEl.innerText = `未激活`
+  }
 
   // 同步指引步骤中的 URL
   const g1 = document.getElementById('guide-base-url-1')
@@ -38,7 +58,6 @@ function initApp() {
   if (g2) g2.innerText = baseUrl
 
   initPointerGlow()
-  fetchKeyBalance()
 }
 
 // 3. 全局光标跟随微光系统 (Pointer Glow Engine)
@@ -177,10 +196,30 @@ function copyBaseUrl(e) {
 }
 
 function copyCurrentKey(e) {
+  if (!currentKey) {
+    showToast('您尚未绑定专属 API Key，请先点击绑定或前往购买！', '⚠️')
+    promptSwitchKey()
+    return
+  }
   navigator.clipboard.writeText(currentKey).then(() => {
     triggerCopyAnimation(e?.currentTarget || document.getElementById('btn-copy-api-key'))
     showToast('专属 API Key 已复制到剪贴板', '🔑')
   })
+}
+
+// 快速弹窗绑定密钥辅助函数
+function bindQuickModalKey() {
+  const input = document.getElementById('modal-quick-key-input')
+  const val = (input?.value || '').trim()
+  if (!val) {
+    showToast('请输入有效的 API Key', '⚠️')
+    return
+  }
+  currentKey = val
+  localStorage.setItem('aurora_api_key', currentKey)
+  closeModal()
+  initApp()
+  showToast('专属 API Key 已成功绑定！您现在可以畅享所有模型实测！', '🎉')
 }
 
 // 9. 切换 / 绑定 API Key 模态框
@@ -376,6 +415,33 @@ async function handleBuy(packageId) {
 
 // 14. 在线终端演练场执行调用 (macOS 终端流式 SSE 打字机)
 async function executePlaygroundTest() {
+  if (!currentKey) {
+    openModal({
+      title: '🔑 请先绑定您的专属 API Key',
+      bodyHtml: `
+        <div style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 14px;">
+          为了保证平台算力质量并杜绝黑产自动化刷卡，在线终端演练场采用<strong>「专属密钥实测机制」</strong>。<br/>
+          请先绑定您已持有的专属密钥，或直接获取 <strong>1 元极速联调包</strong>：
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+          <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px;">已持有 Key？直接在此粘贴绑定：</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="modal-quick-key-input" class="modal-input" placeholder="sk-aurora-xxxx" style="flex: 1; margin: 0;" />
+            <button class="button button-primary" style="padding: 0 16px; font-size: 0.85rem; white-space: nowrap; height: 38px;" onclick="bindQuickModalKey()">⚡ 立即绑定</button>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">尚未拥有密钥？一键获取专属算力包（秒级自动发卡）：</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <a href="https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%220235a01cada711f1879352540025c377%22,%22count%22%3A1%7D%5D&viokrz_ex=0" target="_blank" class="button button-secondary" style="text-align: center; font-size: 0.82rem; text-decoration: none; padding: 10px; border: 1px solid rgba(255,255,255,0.15);">🧪 1元极速联调包 (30万)</a>
+          <a href="https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%22de1c407eada511f1ad8252540025c377%22,%22count%22%3A1%7D%5D&viokrz_ex=0" target="_blank" class="button button-primary" style="text-align: center; font-size: 0.82rem; text-decoration: none; padding: 10px;">🔥 15元主力畅享包 (700万)</a>
+        </div>
+      `,
+      confirmText: '稍后购买',
+      onConfirm: () => true,
+    })
+    return
+  }
+
   const promptInput = document.getElementById('test-prompt-input')
   const modelSelect = document.getElementById('test-model-select')
   const streamToggle = document.getElementById('test-stream-toggle')
@@ -383,7 +449,7 @@ async function executePlaygroundTest() {
   const runBtn = document.getElementById('btn-run-test')
 
   const prompt = promptInput?.value?.trim() || '你好'
-  const model = modelSelect?.value || 'aurora-coder'
+  const model = modelSelect?.value || 'gemini-3.7-flash'
   const isStream = streamToggle?.checked ?? true
 
   runBtn.disabled = true
@@ -450,6 +516,88 @@ async function executePlaygroundTest() {
   } finally {
     runBtn.disabled = false
     runBtn.innerText = '⚡ EXECUTE CALL'
+  }
+}
+
+// 14.4 展开/收起 66 款官方模型 ID 速查库抽屉
+function toggleFullModelsDrawer() {
+  const drawer = document.getElementById('full-models-drawer')
+  if (drawer) {
+    drawer.classList.toggle('active')
+    if (drawer.classList.contains('active')) {
+      drawer.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      showToast('已展开 66 款官方模型速查库，点击复制按钮可一键拷贝代号', '📋')
+    }
+  }
+}
+
+// 14.5 模型对照表分类筛选与搜索系统
+function filterModelsByCategory(category) {
+  const buttons = document.querySelectorAll('.model-table-filter-bar .model-filter-btn')
+  buttons.forEach((b) => b.classList.remove('active'))
+
+  const targetBtn = document.querySelector(`.model-table-filter-bar button[data-filter="${category}"]`)
+  if (targetBtn) {
+    targetBtn.classList.add('active')
+  } else if (event?.currentTarget?.classList?.contains('model-filter-btn')) {
+    event.currentTarget.classList.add('active')
+  }
+
+  // 重置搜索框
+  const searchInput = document.getElementById('model-search-input')
+  if (searchInput) searchInput.value = ''
+
+  const rows = document.querySelectorAll('#models-matrix-table tbody tr')
+  rows.forEach((row) => {
+    const rowCategory = (row.getAttribute('data-category') || '').split(/\s+/)
+    if (category === 'all' || rowCategory.includes(category)) {
+      row.style.display = ''
+    } else {
+      row.style.display = 'none'
+    }
+  })
+
+  // 如果从卡片直接点击筛选，平滑滚动至表格位置
+  if (!event?.currentTarget?.classList?.contains('model-filter-btn')) {
+    scrollToSection('models-matrix-table')
+  }
+}
+
+// 实时搜索模型名称、别名、多模态特性
+function handleModelSearch(keyword) {
+  const kw = (keyword || '').toLowerCase().trim()
+  const rows = document.querySelectorAll('#models-matrix-table tbody tr')
+
+  // 如果处于搜索态，取消所有分类按钮的高亮
+  if (kw) {
+    const buttons = document.querySelectorAll('.model-table-filter-bar .model-filter-btn')
+    buttons.forEach((b) => b.classList.remove('active'))
+  }
+
+  rows.forEach((row) => {
+    const text = (row.innerText || '').toLowerCase()
+    const tags = (row.getAttribute('data-tags') || '').toLowerCase()
+    if (!kw || text.includes(kw) || tags.includes(kw)) {
+      row.style.display = ''
+    } else {
+      row.style.display = 'none'
+    }
+  })
+}
+
+// 复制模型ID到剪贴板
+async function copyModelId(modelId) {
+  try {
+    await navigator.clipboard.writeText(modelId)
+    showToast(`已复制模型 ID: ${modelId}`, '📋')
+  } catch (e) {
+    const ta = document.createElement('textarea')
+    ta.value = modelId
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    showToast(`已复制模型 ID: ${modelId}`, '📋')
   }
 }
 

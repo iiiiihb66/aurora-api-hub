@@ -58,17 +58,21 @@ function writeDb(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
 }
 
-// 智能分层上游密钥池配置 (阿福分组精确定向)
+// 智能分层上游密钥池配置 (阿福与 Gemiaude 最优多线定向)
 const TIER_KEYS = {
-  // 海外特惠 (0.08x)
+  // 海外特惠 (0.08x，专跑 GPT 5.5 / 5.6 / GPT-6 Astra)
   discount: (process.env.AFU_KEY_DISCOUNT || '').split(',').map((k) => k.trim()).filter(Boolean),
   // 海外低价 (0.12x)
   low: (process.env.AFU_KEY_LOW || '').split(',').map((k) => k.trim()).filter(Boolean),
-  // 海外特价 (0.20x)
+  // 海外特价 (0.20x，Claude 阿福保底专线)
   special: (process.env.AFU_KEY_SPECIAL || '').split(',').map((k) => k.trim()).filter(Boolean),
-  // 国产特价 (0.50x)
+  // 国产特价 (0.50x，DeepSeek / 豆包 / MiniMax / Kimi / GLM)
   domestic: (process.env.AFU_KEY_DOMESTIC || '').split(',').map((k) => k.trim()).filter(Boolean),
-  // 默认保底 (1.00x)
+  // Gemiaude kiro 组 (0.5x，Claude 5厘钱首选专线)
+  kiro: (process.env.GEMIAUDE_KEY_KIRO || '').split(',').map((k) => k.trim()).filter(Boolean),
+  // Gemiaude grok-web 组 (0.06x，Grok 3厘钱首选专线)
+  grok: (process.env.GEMIAUDE_KEY_GROK || '').split(',').map((k) => k.trim()).filter(Boolean),
+  // 默认保底 (1.00x，Gemini、视频及全局保底)
   default: (process.env.AFU_KEY_DEFAULT || process.env.AFU_API_KEY || '').split(',').map((k) => k.trim()).filter(Boolean),
 }
 
@@ -109,131 +113,258 @@ function routeUpstreamTarget(reqModel = '', messages = []) {
       low.includes('claude-opus')
 
     if (!isVisionCapable) {
-      console.log(`[智能视觉升配] 检测到图片输入，原模型【${reqModel}】自动升配为【gemini-3.7-flash】视觉通道`)
+      console.log(`[智能视觉升配] 检测到图片输入，原模型【${reqModel}】自动升配为【claude-sonnet-4-6】视觉通道`)
       return {
-        upstreamModel: 'gemini-3.7-flash',
-        keyGroup: 'default',
-        tokenMultiplier: 1.5,
-        routedNote: '自动升配多模态视觉 (default)',
+        upstreamModel: 'claude-sonnet-4-6',
+        keyGroup: 'special',
+        tokenMultiplier: 1.0,
+        routedNote: 'Claude 3.7/Sonnet 超清多模态视觉专线',
       }
     }
   }
 
-  // 2. GPT-6 / GPT-5 系列 ➔ 优选【海外特惠组 (0.08x)】，阿福扣费超低，我们收取 2.0x~3.0x，产生 25~37 倍暴利！
-  if (low.includes('gpt-6') || low.includes('astra')) {
-    return {
-      upstreamModel: 'gpt-6-astra',
-      keyGroup: 'discount',
-      tokenMultiplier: 3.0,
-      routedNote: 'GPT-6 旗舰工程 (海外特惠 0.08x)',
-    }
-  }
-
-  if (low.includes('gpt-5') || low.includes('5.6') || low.includes('5.5') || low.includes('pro')) {
-    return {
-      upstreamModel: 'gpt-5.5',
-      keyGroup: 'discount',
-      tokenMultiplier: 2.0,
-      routedNote: 'GPT-5.5 旗舰思考 (海外特惠 0.08x)',
-    }
-  }
-
-  // 3. Claude 全系 ➔ 优选【海外特价组 (0.20x)】，专跑 Claude 3.5 Sonnet / Opus
-  if (low.includes('claude')) {
+  // 2. 全栈编程与 Claude 旗舰 (优先走 Gemiaude kiro 5厘钱专线，故障自动顺延阿福特价 0.20x 保底)
+  if (low.includes('coder') || low.includes('claude')) {
     let target = 'claude-sonnet-4-6'
     if (low.includes('opus')) target = 'claude-opus-4-7'
     return {
       upstreamModel: target,
-      keyGroup: 'special',
-      tokenMultiplier: 2.0,
-      routedNote: 'Claude 3.5 Sonnet (海外特价 0.20x)',
+      keyGroup: 'kiro',
+      tokenMultiplier: 1.0,
+      routedNote: 'Claude 3.7/Sonnet 全栈编程专线 (Gemiaude kiro 5折直通 / 阿福保底)',
     }
   }
 
-  // 4. 国产特价模型 ➔ 优选【国产特价组 (0.50x)】与豆包
-  if (low.includes('doubao') || low.includes('seed')) {
+  // 3. xAI Grok 系列 (优先走 Gemiaude grok-web 3厘钱专线，故障自动顺延保底)
+  if (low.includes('grok')) {
+    let target = 'grok-4.6'
+    if (low.includes('4.5')) target = 'grok-4.5'
+    return {
+      upstreamModel: target,
+      keyGroup: 'grok',
+      tokenMultiplier: 1.0,
+      routedNote: 'xAI Grok 4.6 极速问答专线 (Gemiaude 0.6折直通 / 阿福保底)',
+    }
+  }
+
+  // 4. 通用极速问答与 GPT-4o 兼容
+  if (low.includes('chat') || low.includes('4o')) {
+    return {
+      upstreamModel: 'claude-sonnet-4-6',
+      keyGroup: 'kiro',
+      tokenMultiplier: 1.0,
+      routedNote: '极光通用极速智能助手专线 (Claude 5折直通 / 阿福保底)',
+    }
+  }
+
+  // 4. Gemini 旗舰多模态系列
+  if (low.includes('gemini')) {
+    return {
+      upstreamModel: 'gemini-3.7-flash',
+      keyGroup: 'default',
+      tokenMultiplier: 1.0,
+      routedNote: 'Gemini 3.7 Flash 高速专线',
+    }
+  }
+
+  // 5. 字节跳动豆包系列与 DeepSeek 推理 ➔ 优选【国产特价组 (0.50x)】
+  if (low.includes('doubao') || low.includes('seed') || low.includes('deepseek')) {
     return {
       upstreamModel: 'doubao-seed-2-0-pro-260215',
       keyGroup: 'domestic',
       tokenMultiplier: 1.0,
-      routedNote: '豆包中文特调 (国产特价 0.50x)',
+      routedNote: '豆包 Seed 2.0 中文爆款特调专线',
     }
   }
 
-  if (low.includes('deepseek')) {
+  // 6. GPT-6 系列
+  if (low.includes('gpt-6') || low.includes('astra')) {
     return {
-      upstreamModel: 'doubao-seed-2-0-pro-260215',
-      keyGroup: 'domestic',
-      tokenMultiplier: 1.0,
-      routedNote: 'DeepSeek 高可用兼容通道 (国产特价 0.50x)',
+      upstreamModel: 'gpt-6-astra',
+      keyGroup: 'default',
+      tokenMultiplier: 3.0,
+      routedNote: 'GPT-6 新一代旗舰工程专线',
     }
   }
 
-  // 5. 经典兼容别名 (gpt-4o / gpt-4o-mini / aurora-coder / aurora-chat)
-  // 如果是编程/对话，打特惠组 gpt-5.5 或 default 组
-  if (low.includes('coder') || low.includes('gpt-4o') || low.includes('chat')) {
+  // 7. GPT-5.5 / GPT-5 系列
+  if (low.includes('gpt-5') || low.includes('5.6') || low.includes('5.5') || low.includes('pro')) {
     return {
       upstreamModel: 'gpt-5.5',
-      keyGroup: 'discount',
-      tokenMultiplier: 1.0,
-      routedNote: '极光编程与全栈专线 (特惠组 0.08x)',
+      keyGroup: 'default',
+      tokenMultiplier: 2.0,
+      routedNote: 'GPT-5.5 前沿旗舰思考专线',
     }
   }
 
-  // 6. 兜底回退
+  // 8. AI 绘画与生图专线 (gpt-image-2, dall-e-3, nano-banana)
+  if (low.includes('image') || low.includes('dall') || low.includes('banana')) {
+    let target = 'gpt-image-2'
+    if (low.includes('4k')) target = 'gpt-image-2-4k'
+    else if (low.includes('2k')) target = 'gpt-image-2-2k'
+    else if (low.includes('2.5')) target = 'gpt-image-2.5'
+    return {
+      upstreamModel: target,
+      keyGroup: 'default',
+      tokenMultiplier: 1.0,
+      routedNote: 'GPT Image 2 商业级生图专线 (0.035元低价直通 / 阿福保底)',
+      isImageGeneration: true,
+    }
+  }
+
+  // 9. AI 视频生成专线 (veo3.1, seedance-2)
+  if (low.includes('veo') || low.includes('seedance') || low.includes('video')) {
+    return {
+      upstreamModel: 'veo3.1',
+      keyGroup: 'default',
+      tokenMultiplier: 3.0,
+      routedNote: 'Veo 3.1 AI 视频生成专线',
+    }
+  }
+
+  // 10. 最终保底回退 (Claude Sonnet 3.7 稳定极速高可用保底)
   return {
-    upstreamModel: 'gpt-5.5',
-    keyGroup: 'discount',
+    upstreamModel: 'claude-sonnet-4-6',
+    keyGroup: 'special',
     tokenMultiplier: 1.0,
-    routedNote: '全局特惠保底通道 (0.08x)',
+    routedNote: '极光全球高速专线',
   }
 }
 
-// 多层轮询故障转移引擎：优先使用对应低价分组，故障时自动无缝降级到 default 组保底
+// 多层轮询故障转移引擎：优先使用对应低价分组与专线上游，故障时自动无缝降级到阿福保底
 async function fetchAfuWithTieredRouting(url, options = {}, preferredGroup = 'default') {
-  // 构建尝试优先级队列
-  const candidateKeys = [
-    ...(TIER_KEYS[preferredGroup] || []),
-    ...(preferredGroup !== 'default' ? TIER_KEYS.default || [] : []),
-  ]
+  const gemiaudeBase = 'https://oneapi.gemiaude.com/v1'
+  const afuBase = process.env.AFU_API_BASE || 'https://api.afugpt.cn/v1'
+
+  // 构建智能多线候选池 (按性价比从高到低排列)
+  const candidateList = []
+
+  if (preferredGroup === 'kiro') {
+    (TIER_KEYS.kiro || []).forEach((k) => candidateList.push({ key: k, baseUrl: gemiaudeBase, note: 'Gemiaude kiro 5折专线 (¥0.005/次)' }))
+    (TIER_KEYS.special || []).forEach((k) => candidateList.push({ key: k, baseUrl: afuBase, note: '阿福海外特价 2折专线 (¥0.02/次)' }))
+  } else if (preferredGroup === 'grok') {
+    (TIER_KEYS.grok || []).forEach((k) => candidateList.push({ key: k, baseUrl: gemiaudeBase, note: 'Gemiaude grok 0.6折专线 (¥0.003/次)' }))
+  } else if (preferredGroup === 'discount') {
+    (TIER_KEYS.discount || []).forEach((k) => candidateList.push({ key: k, baseUrl: afuBase, note: '阿福海外特惠 0.8折专线' }))
+  } else if (preferredGroup === 'special') {
+    (TIER_KEYS.special || []).forEach((k) => candidateList.push({ key: k, baseUrl: afuBase, note: '阿福海外特价 2折专线' }))
+  } else if (preferredGroup === 'domestic') {
+    (TIER_KEYS.domestic || []).forEach((k) => candidateList.push({ key: k, baseUrl: afuBase, note: '阿福国产特价 5折专线' }))
+  }
+
+  (TIER_KEYS.default || []).forEach((k) => candidateList.push({ key: k, baseUrl: afuBase, note: '阿福默认全局保底' }))
+
+  // 去重
+  const uniqueCandidates = []
+  const seen = new Set()
+  for (const c of candidateList) {
+    if (c.key && !seen.has(c.key)) {
+      seen.add(c.key)
+      uniqueCandidates.push(c)
+    }
+  }
 
   let lastError = null
-  for (let i = 0; i < candidateKeys.length; i++) {
-    const currentKey = candidateKeys[i]
+  for (let i = 0; i < uniqueCandidates.length; i++) {
+    const { key, baseUrl, note } = uniqueCandidates[i]
     try {
+      const endpoint = url.replace(/https?:\/\/[^\/]+\/v1/i, '')
+      const targetUrl = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
       const headers = {
         ...(options.headers || {}),
-        Authorization: `Bearer ${currentKey}`,
+        Authorization: `Bearer ${key}`,
       }
-      const res = await fetch(url, { ...options, headers })
+      console.log(`[智能多线路由] 尝试线路 #${i + 1} (${note}) ➔ ${targetUrl}`)
+      const res = await fetch(targetUrl, { ...options, headers })
 
       if (!res.ok) {
         const cloned = res.clone()
         const errText = await cloned.text()
-        const isQuotaOrAuth =
-          res.status === 401 ||
-          res.status === 429 ||
-          res.status === 403 ||
-          errText.includes('quota') ||
-          errText.includes('insufficient') ||
-          errText.includes('balance')
+        console.warn(`[智能多线路由] 线路 #${i + 1} 返回 HTTP ${res.status}:`, errText)
 
-        if (isQuotaOrAuth && i < candidateKeys.length - 1) {
-          console.warn(`[智能路由] 分组 Key #${i + 1} 额度不足或受限，顺延切换至备用 Key #${i + 2}...`)
-          lastError = new Error(`Key #${i + 1} 额度不足: ${errText}`)
+        if (i < uniqueCandidates.length - 1) {
+          console.warn(`[智能多线路由] 顺延切换至备用线路 #${i + 2}...`)
+          lastError = new Error(`线路 #${i + 1} 异常 (${res.status}): ${errText}`)
           continue
         }
       }
 
       return res
     } catch (err) {
-      console.warn(`[智能路由] Key #${i + 1} 网络异常:`, err.message)
+      console.warn(`[智能多线路由] 线路 #${i + 1} 网络异常:`, err.message)
       lastError = err
-      if (i < candidateKeys.length - 1) continue
+      if (i < uniqueCandidates.length - 1) continue
     }
   }
 
   throw lastError || new Error('所有配置的分组 API Key 均不可用')
+}
+
+// 🎨 生图三级智能容灾调度器：
+// Tier 1 (首选 3.5分钱): Gemiaude gpt-image-2
+// Tier 2 (备用 4.5分钱): Gemiaude gpt-image-2-2k (高清独立号池，遇抖动自动顺延)
+// Tier 3 (终极 1毛钱): 阿福 API 官方专线兜底 (永不失败)
+async function fetchImageWithThreeTierFallback(payload, isChatCompletions = true) {
+  const imageBase = process.env.IMAGE_API_BASE || 'https://oneapi.gemiaude.com/v1'
+  const imageKey = process.env.IMAGE_API_KEY || 'sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy'
+  const afuBase = process.env.AFU_API_BASE || 'https://api.afugpt.cn/v1'
+  const endpoint = isChatCompletions ? '/chat/completions' : '/images/generations'
+
+  // 1. Tier 1: 优先走 Gemiaude gpt-image-2 (¥0.035/张，成本骤降 65%)
+  if (imageKey) {
+    try {
+      console.log(`[生图三级容灾 - Tier 1] 尝试【gpt-image-2】(¥0.035/张) @ ${imageBase}...`)
+      const t1Payload = { ...payload, model: 'gpt-image-2' }
+      const res1 = await fetch(`${imageBase}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${imageKey}`,
+        },
+        body: JSON.stringify(t1Payload),
+      })
+      if (res1.ok) {
+        console.log(`[生图三级容灾] Tier 1 (¥0.035) 出图成功！`)
+        return res1
+      }
+      console.warn(`[生图三级容灾] Tier 1 返回 ${res1.status}，顺延尝试 Tier 2 (gpt-image-2-2k)...`)
+    } catch (err1) {
+      console.warn(`[生图三级容灾] Tier 1 网络异常 (${err1.message})，顺延尝试 Tier 2...`)
+    }
+
+    // 2. Tier 2: 顺延走 Gemiaude gpt-image-2-2k (¥0.045/张，高清独立号池)
+    try {
+      console.log(`[生图三级容灾 - Tier 2] 尝试【gpt-image-2-2k】(¥0.045/张) @ ${imageBase}...`)
+      const t2Payload = { ...payload, model: 'gpt-image-2-2k' }
+      const res2 = await fetch(`${imageBase}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${imageKey}`,
+        },
+        body: JSON.stringify(t2Payload),
+      })
+      if (res2.ok) {
+        console.log(`[生图三级容灾] Tier 2 (¥0.045 2K高清) 出图成功！`)
+        return res2
+      }
+      console.warn(`[生图三级容灾] Tier 2 返回 ${res2.status}，顺延切换至 Tier 3 (阿福保底)...`)
+    } catch (err2) {
+      console.warn(`[生图三级容灾] Tier 2 网络异常 (${err2.message})，顺延切换至 Tier 3...`)
+    }
+  }
+
+  // 3. Tier 3: 终极阿福官方高可用兜底 (¥0.10/张)
+  console.log(`[生图三级容灾 - Tier 3] 切换至阿福 API 终极保底通道 (¥0.10/张)...`)
+  return fetchAfuWithTieredRouting(
+    `${afuBase}${endpoint}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, model: 'gpt-image-2' }),
+    },
+    'default'
+  )
 }
 
 // 内存频控限流
@@ -255,114 +386,625 @@ function checkRateLimit(token, maxPerMinute = 80) {
   return { ok: true, remaining: maxPerMinute - record.count }
 }
 
-// 精选模型矩阵
+// 上游报错与渠道脱敏安全清洗 (彻底杜绝泄露阿福/NewAPI等机密)
+function sanitizeUpstreamError(input) {
+  if (!input) return input
+  if (typeof input === 'string') {
+    return input
+      .replace(/https?:\/\/[^\s"'`<>]+/gi, 'https://api.aurora-ai.com')
+      .replace(/afugpt(\.cn)?/gi, 'aurora-cluster')
+      .replace(/阿福(api)?/gi, '极光官方节点')
+      .replace(/one[-_]?api|new[-_]?api/gi, 'aurora-gateway')
+  }
+  if (typeof input === 'object') {
+    try {
+      const str = JSON.stringify(input)
+      const cleaned = sanitizeUpstreamError(str)
+      return JSON.parse(cleaned)
+    } catch {
+      return { error: { message: '节点调度繁忙，请稍后重试', type: 'upstream_error' } }
+    }
+  }
+  return input
+}
+
+// 管理员中间件安全拦截 (严禁未授权批量出卡或读取数据库)
+function requireAdminAuth(req, res, next) {
+  const adminSecret = process.env.ADMIN_SECRET || 'aurora-admin-secret-2026'
+  const auth = req.headers['authorization'] || req.headers['x-admin-secret'] || req.query.secret || ''
+  const token = auth.replace(/^Bearer\s+/i, '').trim()
+  if (!token || token !== adminSecret) {
+    return res.status(403).json({ ok: false, error: '无权访问管理接口，请提供有效的管理员秘钥 (ADMIN_SECRET)' })
+  }
+  next()
+}
+
+// 精选模型矩阵 (统一为官方真实标准模型名，并保留兼容别名)
 const AURORA_MODELS = [
   {
-    id: 'aurora-coder',
-    name: '极光·全栈编程与算法大师',
-    desc: 'Python、TS、Vue/React、Cursor/VSCode 编程专线 (实测高可用)',
-    category: '代码大模型',
-    upstreamModel: 'gemini-3.7-flash',
-    tokenMultiplier: 1.0, // 1倍 Token 计费
+    "id": "gpt-6-astra",
+    "name": "gpt-6-astra",
+    "desc": "GPT-6 Astra 新一代前沿架构推理",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-6-astra",
+    "tokenMultiplier": 3
   },
   {
-    id: 'aurora-chat',
-    name: '极光·极速通用智能助手',
-    desc: '日常问答、长文写作、翻译润色、知识问答',
-    category: '通用大模型',
-    upstreamModel: 'gemini-3.7-flash',
-    tokenMultiplier: 1.0,
+    "id": "gpt-5.5",
+    "name": "gpt-5.5",
+    "desc": "GPT-5.5 官方特惠思考底座",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 2
   },
   {
-    id: 'aurora-deepseek',
-    name: '极光·超能逻辑推理专家',
-    desc: '数理逻辑证明、复杂算法分析、深度推演',
-    category: '深度推理模型',
-    upstreamModel: 'gemini-3.8-flash',
-    tokenMultiplier: 1.2,
+    "id": "gpt-5.6-luna",
+    "name": "gpt-5.6-luna",
+    "desc": "GPT-5.6 Luna 极速增强版",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 2
   },
   {
-    id: 'aurora-doubao',
-    name: '极光·豆包中文爆款特调',
-    desc: '爆款网感文案、短视频脚本、地道中文创作',
-    category: '中文特调模型',
-    upstreamModel: 'doubao-seed-2-0-pro-260215',
-    tokenMultiplier: 1.0,
+    "id": "gpt-5.6-sol",
+    "name": "gpt-5.6-sol",
+    "desc": "GPT-5.6 Sol 极速版",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 2
   },
   {
-    id: 'aurora-pro',
-    name: '极光·旗舰思考与超级决策',
-    desc: '超长上下文感知、跨领域顶尖多模态推理',
-    category: '顶配思考模型',
-    upstreamModel: 'gpt-5.2',
-    tokenMultiplier: 2.0,
+    "id": "gpt-5.6-terra",
+    "name": "gpt-5.6-terra",
+    "desc": "GPT-5.6 Terra 长文本版",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 2
   },
   {
-    id: 'aurora-claude',
-    name: '极光·Claude 商业文学专家',
-    desc: '顶级行文质感、专业商业策划、长篇巨著创作',
-    category: '商业文学模型',
-    upstreamModel: 'claude-sonnet-4-6',
-    tokenMultiplier: 2.5,
+    "id": "gpt-5.4",
+    "name": "gpt-5.4",
+    "desc": "GPT-5.4 官方思考架构",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 1.5
   },
   {
-    id: 'aurora-image',
-    name: '极光·超清商业绘画引擎',
-    desc: 'OpenAI 商业级视觉生成 (/v1/images/generations)',
-    category: 'AI 绘画生成',
-    upstreamModel: 'gpt-image-2',
-    tokenMultiplier: 1.0,
-  },
-
-  // 主流第三方兼容别名
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o (兼容通道)',
-    desc: '无感兼容第三方预设 gpt-4o',
-    category: 'OpenAI 兼容',
-    upstreamModel: 'gemini-3.7-flash',
-    tokenMultiplier: 1.0,
+    "id": "gpt-5.4-mini",
+    "name": "gpt-5.4-mini",
+    "desc": "GPT-5.4 Mini 极速轻量",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
   },
   {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini (兼容通道)',
-    desc: '无感兼容轻量级预设',
-    category: 'OpenAI 兼容',
-    upstreamModel: 'gemini-3.7-flash',
-    tokenMultiplier: 1.0,
+    "id": "gpt-5.3-codex",
+    "name": "gpt-5.3-codex",
+    "desc": "GPT-5.3 Codex 代码特调",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 1.5
   },
   {
-    id: 'deepseek-chat',
-    name: 'DeepSeek-Chat (标准通道)',
-    desc: '兼容 DeepSeek V3 协议',
-    category: 'DeepSeek 兼容',
-    upstreamModel: 'gemini-3.8-flash',
-    tokenMultiplier: 1.0,
+    "id": "gpt-5.2",
+    "name": "gpt-5.2",
+    "desc": "GPT-5.2 通用旗舰",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 1.5
   },
   {
-    id: 'deepseek-reasoner',
-    name: 'DeepSeek-Reasoner (深度推理)',
-    desc: '兼容 DeepSeek R1 满血推理协议',
-    category: 'DeepSeek 兼容',
-    upstreamModel: 'gemini-3.8-flash',
-    tokenMultiplier: 1.2,
+    "id": "gpt-4o",
+    "name": "gpt-4o",
+    "desc": "OpenAI 官方旗舰直通通道",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gpt-5.5",
+    "tokenMultiplier": 1
   },
   {
-    id: 'claude-3-5-sonnet',
-    name: 'Claude 3.5 Sonnet (兼容通道)',
-    desc: '兼容 Claude 官方客户端预设',
-    category: 'Claude 兼容',
-    upstreamModel: 'claude-sonnet-4-6',
-    tokenMultiplier: 2.5,
+    "id": "gpt-4o-mini",
+    "name": "gpt-4o-mini",
+    "desc": "OpenAI 极速轻量通道",
+    "category": "OpenAI 旗舰",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
   },
   {
-    id: 'dall-e-3',
-    name: 'DALL·E 3 (生图兼容通道)',
-    desc: '兼容标准 OpenAI 生图接口',
-    category: 'AI 绘画生成',
-    upstreamModel: 'gpt-image-2',
-    tokenMultiplier: 1.0,
+    "id": "claude-sonnet-4-6",
+    "name": "claude-sonnet-4-6",
+    "desc": "Claude Sonnet 4.6 官方专线",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-sonnet-4-6",
+    "tokenMultiplier": 2
   },
+  {
+    "id": "claude-sonnet-5",
+    "name": "claude-sonnet-5",
+    "desc": "Claude Sonnet 5 探索版",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-sonnet-4-6",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "claude-sonnet-4-5-20250929",
+    "name": "claude-sonnet-4-5-20250929",
+    "desc": "Claude Sonnet 4.5 官方稳定版",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-sonnet-4-6",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "claude-opus-4-7",
+    "name": "claude-opus-4-7",
+    "desc": "Claude Opus 4.7 顶配深度推演",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-opus-4-7-thinking",
+    "name": "claude-opus-4-7-thinking",
+    "desc": "Claude Opus 4.7 满血思维链",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-opus-4-6",
+    "name": "claude-opus-4-6",
+    "desc": "Claude Opus 4.6 经典旗舰",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-opus-4-6-thinking",
+    "name": "claude-opus-4-6-thinking",
+    "desc": "Claude Opus 4.6 思维链版",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-opus-4-8",
+    "name": "claude-opus-4-8",
+    "desc": "Claude Opus 4.8 旗舰演进版",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-opus-5",
+    "name": "claude-opus-5",
+    "desc": "Claude Opus 5 顶配旗舰",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-opus-4-7",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "claude-fable-5",
+    "name": "claude-fable-5",
+    "desc": "Claude Fable 5 叙事与小说特调",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-sonnet-4-6",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "claude-3-5-sonnet",
+    "name": "claude-3-5-sonnet",
+    "desc": "Claude 3.5 Sonnet 官方预设通道",
+    "category": "Claude 商业文学",
+    "upstreamModel": "claude-sonnet-4-6",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "gemini-3.7-flash",
+    "name": "gemini-3.7-flash",
+    "desc": "Google 官方 Gemini 3.7 Flash 全栈编程",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gemini-3.8-flash",
+    "name": "gemini-3.8-flash",
+    "desc": "Gemini 3.8 Flash 极速多模态预览",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gemini-3.5-flash",
+    "name": "gemini-3.5-flash",
+    "desc": "Gemini 3.5 Flash 高吞吐通道",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gemini-3.1-pro-preview",
+    "name": "gemini-3.1-pro-preview",
+    "desc": "Gemini 3.1 Pro 深度推理预览",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1.5
+  },
+  {
+    "id": "gemini-3.1-flash-image-preview",
+    "name": "gemini-3.1-flash-image-preview",
+    "desc": "Gemini 3.1 Flash 图像视觉通道",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gemini-3.1-flash-image-preview-2k",
+    "name": "gemini-3.1-flash-image-preview-2k",
+    "desc": "Gemini 3.1 Flash 2K 高清看图通道",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gemini-3.1-flash-image-preview-4k",
+    "name": "gemini-3.1-flash-image-preview-4k",
+    "desc": "Gemini 3.1 Flash 4K 超清看图通道",
+    "category": "Google 极客编程",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "deepseek-v3",
+    "name": "deepseek-v3",
+    "desc": "DeepSeek V3 官方标准接口",
+    "category": "DeepSeek 满血推理",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "deepseek-reasoner",
+    "name": "deepseek-reasoner",
+    "desc": "DeepSeek R1 满血思维链推理",
+    "category": "DeepSeek 满血推理",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1.2
+  },
+  {
+    "id": "deepseek-v3.1",
+    "name": "deepseek-v3.1",
+    "desc": "DeepSeek V3.1 增强通道",
+    "category": "DeepSeek 满血推理",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "deepseek-v3.2",
+    "name": "deepseek-v3.2",
+    "desc": "DeepSeek V3.2 最新演进版",
+    "category": "DeepSeek 满血推理",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "deepseek-v3-2-251201",
+    "name": "deepseek-v3-2-251201",
+    "desc": "DeepSeek V3 生产快照专线",
+    "category": "DeepSeek 满血推理",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "doubao-seed-2-0-pro-260215",
+    "name": "doubao-seed-2-0-pro-260215",
+    "desc": "字节跳动豆包 Seed 2.0 Pro 官方直通",
+    "category": "国产官方特惠",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "kimi-k2.5",
+    "name": "kimi-k2.5",
+    "desc": "月之暗面 Kimi K2.5 官方通道",
+    "category": "国产官方特惠",
+    "upstreamModel": "kimi-k2.5",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "MiniMax-M2.7",
+    "name": "MiniMax-M2.7",
+    "desc": "MiniMax M2.7 官方旗舰",
+    "category": "国产官方特惠",
+    "upstreamModel": "MiniMax-M2.7",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "MiniMax-M2.7-highspeed",
+    "name": "MiniMax-M2.7-highspeed",
+    "desc": "MiniMax M2.7 极速专线",
+    "category": "国产官方特惠",
+    "upstreamModel": "MiniMax-M2.7",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "MiniMax-M2.5",
+    "name": "MiniMax-M2.5",
+    "desc": "MiniMax M2.5 标准通用通道",
+    "category": "国产官方特惠",
+    "upstreamModel": "MiniMax-M2.7",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "MiniMax-M2.5-highspeed",
+    "name": "MiniMax-M2.5-highspeed",
+    "desc": "MiniMax M2.5 极速专线",
+    "category": "国产官方特惠",
+    "upstreamModel": "MiniMax-M2.7",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "MiniMax-M2",
+    "name": "MiniMax-M2",
+    "desc": "MiniMax M2 经典通道",
+    "category": "国产官方特惠",
+    "upstreamModel": "MiniMax-M2.7",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "glm-5.1",
+    "name": "glm-5.1",
+    "desc": "智谱清言 GLM-5.1 官方旗舰",
+    "category": "国产官方特惠",
+    "upstreamModel": "glm-5.1",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "glm-5",
+    "name": "glm-5",
+    "desc": "智谱清言 GLM-5 官方通道",
+    "category": "国产官方特惠",
+    "upstreamModel": "glm-5.1",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-image-2",
+    "name": "gpt-image-2",
+    "desc": "GPT Image 2 商业级超清生图通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "dall-e-3",
+    "name": "dall-e-3",
+    "desc": "OpenAI DALL·E 3 官方标准生图通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-image-2-c",
+    "name": "gpt-image-2-c",
+    "desc": "GPT Image 2-C 极速生成通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-image-2-vip",
+    "name": "gpt-image-2-vip",
+    "desc": "GPT Image 2 VIP 尊享通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-image-2.5-flare",
+    "name": "gpt-image-2.5-flare",
+    "desc": "GPT Image 2.5 Flare 绚丽光影版",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-image-2.5-sunburst",
+    "name": "gpt-image-2.5-sunburst",
+    "desc": "GPT Image 2.5 Sunburst 高保真艺术版",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-pro",
+    "name": "nano-banana-pro",
+    "desc": "Nano Banana Pro 超清生图",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-pro-2k",
+    "name": "nano-banana-pro-2k",
+    "desc": "Nano Banana Pro 2K 分辨率通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-pro-4k",
+    "name": "nano-banana-pro-4k",
+    "desc": "Nano Banana Pro 4K 印刷级通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-2",
+    "name": "nano-banana-2",
+    "desc": "Nano Banana 2 通用生图引擎",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-2-2k",
+    "name": "nano-banana-2-2k",
+    "desc": "Nano Banana 2 2K 进阶通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "nano-banana-2-4k",
+    "name": "nano-banana-2-4k",
+    "desc": "Nano Banana 2 4K 超清通道",
+    "category": "AI 绘画生成",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "veo3.1",
+    "name": "veo3.1",
+    "desc": "Google 官方 Veo 3.1 视频引擎通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "veo3.1",
+    "tokenMultiplier": 3
+  },
+  {
+    "id": "veo3.1-pro",
+    "name": "veo3.1-pro",
+    "desc": "Veo 3.1 Pro 导演级分镜渲染通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "veo3.1",
+    "tokenMultiplier": 3.5
+  },
+  {
+    "id": "veo3.1-fast",
+    "name": "veo3.1-fast",
+    "desc": "Veo 3.1 Fast 快速预览生成通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "veo3.1",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "seedance-2",
+    "name": "seedance-2",
+    "desc": "字节跳动即梦 Seedance 2.0 视频通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "seedance-2",
+    "tokenMultiplier": 3
+  },
+  {
+    "id": "seedance-2-fast",
+    "name": "seedance-2-fast",
+    "desc": "Seedance 2.0 Fast 极速通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "seedance-2",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "seedance-2-mini",
+    "name": "seedance-2-mini",
+    "desc": "Seedance 2.0 Mini 轻量分镜通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "seedance-2",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "grok-video-1.5",
+    "name": "grok-video-1.5",
+    "desc": "xAI Grok Video 1.5 动态视频通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "grok-video-1.5",
+    "tokenMultiplier": 3
+  },
+  {
+    "id": "grok-1.5-video-6s",
+    "name": "grok-1.5-video-6s",
+    "desc": "Grok Video 6秒短剧镜头专线",
+    "category": "AI 视频生成",
+    "upstreamModel": "grok-video-1.5",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "grok-1.5-video-10s",
+    "name": "grok-1.5-video-10s",
+    "desc": "Grok Video 10秒广告镜头专线",
+    "category": "AI 视频生成",
+    "upstreamModel": "grok-video-1.5",
+    "tokenMultiplier": 2.5
+  },
+  {
+    "id": "grok-1.5-video-15s",
+    "name": "grok-1.5-video-15s",
+    "desc": "Grok Video 15秒剧情镜头专线",
+    "category": "AI 视频生成",
+    "upstreamModel": "grok-video-1.5",
+    "tokenMultiplier": 3
+  },
+  {
+    "id": "omni_flash-10s",
+    "name": "omni_flash-10s",
+    "desc": "Omni Flash 10秒极速出片通道",
+    "category": "AI 视频生成",
+    "upstreamModel": "omni_flash-10s",
+    "tokenMultiplier": 2
+  },
+  {
+    "id": "aurora-coder",
+    "name": "aurora-coder (兼容别名)",
+    "desc": "历史别名，自动路由至 Gemini 3.7 Flash",
+    "category": "兼容别名",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "aurora-chat",
+    "name": "aurora-chat (兼容别名)",
+    "desc": "历史别名，自动路由至轻量通用主力",
+    "category": "兼容别名",
+    "upstreamModel": "gemini-3.7-flash",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "aurora-deepseek",
+    "name": "aurora-deepseek (兼容别名)",
+    "desc": "历史别名，自动路由至 DeepSeek",
+    "category": "兼容别名",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "aurora-doubao",
+    "name": "aurora-doubao (兼容别名)",
+    "desc": "历史别名，自动路由至豆包 Seed 2.0",
+    "category": "兼容别名",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "aurora-image",
+    "name": "aurora-image (兼容别名)",
+    "desc": "历史别名，自动路由至 GPT Image 2",
+    "category": "兼容别名",
+    "upstreamModel": "gpt-image-2",
+    "tokenMultiplier": 1
+  },
+  {
+    "id": "gpt-6",
+    "name": "gpt-6 (兼容别名)",
+    "desc": "简写别名，自动路由至 GPT-6 Astra",
+    "category": "兼容别名",
+    "upstreamModel": "gpt-6-astra",
+    "tokenMultiplier": 3
+  },
+  {
+    "id": "doubao-seed-2.0",
+    "name": "doubao-seed-2.0 (简写别名)",
+    "desc": "简写别名，自动路由至豆包 Seed 2.0 Pro",
+    "category": "兼容别名",
+    "upstreamModel": "doubao-seed-2-0-pro-260215",
+    "tokenMultiplier": 1
+  }
 ]
 
 function resolveModel(reqModel) {
@@ -371,20 +1013,29 @@ function resolveModel(reqModel) {
   if (exact) return exact
 
   const low = reqModel.toLowerCase()
+  if (low.includes('gemini') || low.includes('coder')) {
+    return { id: reqModel, upstreamModel: 'gemini-3.7-flash', tokenMultiplier: 1.0, name: reqModel }
+  }
+  if (low.includes('gpt-6') || low.includes('astra')) {
+    return { id: reqModel, upstreamModel: 'gpt-6-astra', tokenMultiplier: 3.0, name: reqModel }
+  }
+  if (low.includes('gpt-5')) {
+    return { id: reqModel, upstreamModel: 'gpt-5.5', tokenMultiplier: 2.0, name: reqModel }
+  }
   if (low.includes('deepseek')) {
-    return { id: reqModel, upstreamModel: 'gemini-3.8-flash', tokenMultiplier: 1.2, name: reqModel }
-  }
-  if (low.includes('claude')) {
-    return { id: reqModel, upstreamModel: 'claude-sonnet-4-6', tokenMultiplier: 2.5, name: reqModel }
-  }
-  if (low.includes('doubao')) {
     return { id: reqModel, upstreamModel: 'doubao-seed-2-0-pro-260215', tokenMultiplier: 1.0, name: reqModel }
   }
-  if (low.includes('pro') || low.includes('5.2')) {
-    return { id: reqModel, upstreamModel: 'gpt-5.2', tokenMultiplier: 2.0, name: reqModel }
+  if (low.includes('claude')) {
+    return { id: reqModel, upstreamModel: 'claude-sonnet-4-6', tokenMultiplier: 2.0, name: reqModel }
+  }
+  if (low.includes('doubao') || low.includes('seed')) {
+    return { id: reqModel, upstreamModel: 'doubao-seed-2-0-pro-260215', tokenMultiplier: 1.0, name: reqModel }
   }
   if (low.includes('dall') || low.includes('image')) {
     return { id: reqModel, upstreamModel: 'gpt-image-2', tokenMultiplier: 1.0, name: reqModel }
+  }
+  if (low.includes('veo') || low.includes('seedance') || low.includes('video')) {
+    return { id: reqModel, upstreamModel: 'veo3.1', tokenMultiplier: 3.0, name: reqModel }
   }
 
   return { id: reqModel, upstreamModel: reqModel, tokenMultiplier: 1.0, name: reqModel }
@@ -401,7 +1052,7 @@ const TOKEN_PACKAGES = [
     tokens: 300000, // 30万 Tokens
     desc: '仅供联调验证支付与发卡链路 · 扫码 1 元即刻体验',
     tag: '联调测试',
-    payUrl: process.env.PAY_URL_TEST || 'https://mbd.pub/o/bread/mbd-YZaVlJtrag==',
+    payUrl: process.env.PAY_URL_TEST || 'https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%220235a01cada711f1879352540025c377%22,%22count%22%3A1%7D%5D&viokrz_ex=0',
   },
   {
     id: 'pkg_trial',
@@ -410,7 +1061,7 @@ const TOKEN_PACKAGES = [
     tokens: 2000000, // 200万 Tokens
     desc: '约折合 200 万 Tokens · 适合个人轻量代码与对话尝鲜',
     tag: '入门尝鲜',
-    payUrl: process.env.PAY_URL_TRIAL || 'https://afdian.com/order/create?plan_id=cfd2eac0acc111f1bf675254001e7c00&product_type=0',
+    payUrl: process.env.PAY_URL_TRIAL || 'https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%2271bcbd32ada511f1af585254001e7c00%22,%22count%22%3A1%7D%5D&viokrz_ex=0',
   },
   {
     id: 'pkg_standard',
@@ -418,9 +1069,9 @@ const TOKEN_PACKAGES = [
     price: 15.0,
     tokens: 7000000, // 700万 Tokens
     desc: '约折合 700 万 Tokens · 适合重度编程、论文与日常主力',
-    tag: '热销推荐',
+    tag: '🔥 程序员主力推荐',
     highlight: true,
-    payUrl: process.env.PAY_URL_STANDARD || 'https://afdian.com/order/create?plan_id=d46f4952acc111f1a22652540025c377&product_type=0',
+    payUrl: process.env.PAY_URL_STANDARD || 'https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%22de1c407eada511f1ad8252540025c377%22,%22count%22%3A1%7D%5D&viokrz_ex=0',
   },
   {
     id: 'pkg_pro',
@@ -428,8 +1079,8 @@ const TOKEN_PACKAGES = [
     price: 29.9,
     tokens: 16000000, // 1600万 Tokens
     desc: '约折合 1600 万 Tokens · 程序员 Cursor 深度重构专享',
-    tag: '超高性价比',
-    payUrl: process.env.PAY_URL_PRO || 'https://afdian.com/order/create?plan_id=d5438910acc111f1ba6852540025c377&product_type=0',
+    tag: '深度生产力',
+    payUrl: process.env.PAY_URL_PRO || 'https://afdian.com/order/create?product_type=1&plan_id=71b40e1cada511f1b1805254001e7c00&sku=%5B%7B%22sku_id%22%3A%22de2309d6ada511f1853c52540025c377%22,%22count%22%3A1%7D%5D&viokrz_ex=0',
   },
   {
     id: 'pkg_team',
@@ -637,12 +1288,207 @@ app.post('/v1/chat/completions', async (req, res) => {
     return sendOpenAIError(res, 429, `请求频次过高触发防刷保护，请在 ${rate.retryAfter} 秒后再发起。`, 'rate_limit_error', 'rate_limit_exceeded')
   }
 
-  // 100% 完整支持所有 OpenAI 原生请求体参数 (tools, functions, max_tokens, json_object, etc.)
-  const { model = 'aurora-coder', stream = false, messages = [], ...restParams } = req.body || {}
+  // 🛡️ 严格专属密钥体系：公共体验 Key 彻底退役，杜绝白嫖党爬虫脚本刷量
+  if (token === 'sk-aurora-demo-8888') {
+    return sendOpenAIError(
+      res,
+      401,
+      '公共体验密钥已下线升级为【专属密钥防刷体系】。请在极光平台绑定您的专属 API Key，或直接选购【1元极速联调包】开启全网大模型调用！',
+      'invalid_request_error',
+      'demo_key_retired'
+    )
+  }
 
-  // 🚀 核心智能路由：自动根据请求模型 + 是否传图片，精准分流至阿福最低成本分组 Key！
+  // 100% 完整支持所有 OpenAI 原生请求体参数 (tools, functions, max_tokens, json_object, etc.)
+  let { model = 'gemini-3.7-flash', stream = false, messages = [], max_tokens, ...restParams } = req.body || {}
+
+  // 💡 【极光专属黑科技】自然语言额度管家：仅当用户专门询问算力/余额/上一次消耗时秒级回执，绝不误触正常技术提问与代码生成！
+  const lastUserMsg = [...messages].reverse().find((m) => m && m.role === 'user')
+  let lastUserText = ''
+  if (typeof lastUserMsg?.content === 'string') {
+    lastUserText = lastUserMsg.content
+  } else if (Array.isArray(lastUserMsg?.content)) {
+    const textPart = lastUserMsg.content.find((c) => c && (c.type === 'text' || typeof c.text === 'string'))
+    lastUserText = textPart ? (textPart.text || textPart.content || '') : ''
+  }
+
+  // 严格预处理：去除首尾空格、标点符号
+  const cleanedText = (lastUserText || '').trim().toLowerCase().replace(/[\s\?？!！\.,，。:：`'"]/g, '')
+  let quotaIntent = null // 'LAST_CALL' | 'BALANCE' | null
+
+  // 关键防误触闸门：超过 25 字的提问 100% 属于业务提问或代码，绝不拦截！
+  if (cleanedText && cleanedText.length <= 25) {
+    // 1. 查询上一次提问消耗 / 扣费
+    const isLastCall =
+      /^(我)?(上一次|刚才|上一轮|上个问题|刚刚|这次提问|这次)(花了|扣了|用了|消耗了|费了)(多少)?(token|tokens|额度|钱|算力)?$/.test(cleanedText) ||
+      /^(我)?(上一次|刚才|上一轮|上个问题|刚刚|这次提问|这次)(消耗|扣费|花费|扣除|账单)(多少)?(token|tokens|额度|钱|算力)?$/.test(cleanedText) ||
+      /^(我)?(刚才|刚刚|上一次)(花了|扣了|用了|消耗了)(多少)?$/.test(cleanedText)
+
+    if (isLastCall) {
+      quotaIntent = 'LAST_CALL'
+    } else {
+      // 2. 查询账户当前剩余算力 / 余额
+      const isBalance =
+        /^(查|查询|看|查看)?(我的)?(账户|账号)?(余额|额度|token|tokens|算力)$/.test(cleanedText) ||
+        /^(我)?(还?剩|剩余|还有)(多少)(token|tokens|额度|钱|算力)$/.test(cleanedText) ||
+        /^(我)?(还?剩|剩余|还有)(多少)$/.test(cleanedText) ||
+        /^(我的)?(token|tokens|额度|余额)还?剩(多少)?$/.test(cleanedText) ||
+        /^(查下|查一下|查看下)(我的)?(余额|额度)$/.test(cleanedText)
+
+      // 3. 询问模型价格 / 哪款最便宜
+      const isPriceGuide =
+        /^(哪个|什么|哪款)模型(最便宜|最划算|性价比最高|费率最低)$/.test(cleanedText) ||
+        /^(查|看)?(模型价格|模型费率|价格表|价目表|资费|收费标准)$/.test(cleanedText) ||
+        /^(推荐)(一个|个)?(便宜|划算|性价比高)(的)?(模型)?$/.test(cleanedText)
+
+      if (isBalance) {
+        quotaIntent = 'BALANCE'
+      } else if (isPriceGuide) {
+        quotaIntent = 'PRICE_GUIDE'
+      }
+    }
+  }
+
+  if (quotaIntent) {
+    const maskedKey = `${card.code.slice(0, 11)}***${card.code.slice(-4)}`
+    const remM = (remainingTokens / 1000000).toFixed(2)
+    const usedK = ((card.usedTokens || 0) / 1000).toFixed(1)
+    const estRounds = Math.floor(remainingTokens / 500).toLocaleString()
+
+    let replyContent = ''
+
+    if (quotaIntent === 'LAST_CALL') {
+      const last = card.lastCallInfo
+      if (!last) {
+        replyContent =
+`您好！我是您的 **极光 AI 算力管家** ⚡
+您当前的密钥尚未产生历史调用记录，或者服务刚刚启动。
+当前您的账户拥有 **${remainingTokens.toLocaleString()} Tokens**，您可以开始向我提问或写代码，随后即可随时查询单次消耗！`
+      } else {
+        const estCostYuan = ((last.costTokens / 2000000) * 5.0).toFixed(4)
+        replyContent =
+`您好！我是您的 **极光 AI 算力管家** ⚡
+已为您查询到您**上一次提问的精准扣费账单**：
+
+----------------------------------------
+🕒 **调用时间**：\`${last.time || '刚刚'}\`
+🤖 **调用模型**：\`${last.model}\`
+🛣️ **调度通道**：${last.routedNote || '极光高速智能专线'}
+⚡ **本次消耗**：**${last.costTokens.toLocaleString()} Tokens**
+💰 **折合费用**：约 **¥${estCostYuan} 元** (不到 ${(parseFloat(estCostYuan) * 100).toFixed(2)} 分钱！)
+💳 **当前账户剩余**：**${remainingTokens.toLocaleString()} Tokens** (约 **${remM}M**)
+----------------------------------------
+*本次账单查询未扣除您任何上游 Tokens 额度。极光 API 坚持 100% 真实扣费、明明白白！*`
+      }
+    } else if (quotaIntent === 'PRICE_GUIDE') {
+      replyContent =
+`您好！我是您的 **极光 AI 算力管家** ⚡
+为您调取 **极光平台模型性价比与计费梯队指南**（倍率越低越省钱）：
+
+----------------------------------------
+🥇 **【1.0x 最低基准档 · 极致性价比】**（用多少扣多少，强烈推荐日常主力）：
+- 💻 **\`aurora-coder\`**：全栈编程与算法大师（直通 Claude 3.7 旗舰代码通道，极力推荐！）
+- 💬 **\`aurora-chat\`**：极速通用助手（日常问答、长文写作、翻译润色）
+- 👁️ **\`gemini-3.7-flash\`**：超清多模态视觉（看图、报错截图分析、毫秒级出字）
+- 🐼 **\`doubao-seed-2-0-pro-260215\`**：豆包中文爆款特调（爆款网感文案、短视频脚本）
+
+🥈 **【1.2x ~ 2.0x 深度思考档】**（适合高复杂度推演）：
+- 🧠 **\`deepseek-reasoner\`** (1.2x)：完整思维链推演与数理算法证明
+- 🔮 **\`gpt-5.5\`** (2.0x)：前沿旗舰复杂决策攻坚
+
+🥉 **【2.5x ~ 3.0x 顶配工程与视频生成档】**：
+- 🚀 **\`gpt-6-astra\`** (3.0x)：新一代前沿旗舰
+- 🎬 **\`veo3.1\` / \`seedance-2\`** (3.0x)：商业级 AI 视频生成
+----------------------------------------
+💡 **省算力建议**：写代码选 **\`aurora-coder\`**，日常聊天选 **\`aurora-chat\`**，均按 **1.0x 最低价**计费！
+*本次价目表查询由极光网关本地秒回，未消耗您任何 Tokens 额度。*`
+    } else {
+      replyContent =
+`您好！我是您的 **极光 AI 算力管家** ⚡
+已为您实时调取当前密钥专属账户状态：
+
+----------------------------------------
+🔑 **专属密钥**：\`${maskedKey}\`
+⚡ **剩余算力**：**${remainingTokens.toLocaleString()} Tokens** (约 **${remM} 百万** Tokens)
+📊 **累计消耗**：**${(card.usedTokens || 0).toLocaleString()} Tokens** (约 **${usedK}k** Tokens)
+🏷️ **套餐类型**：${card.remark || '极光专属算力包'}
+🛡️ **额度有效期**：**终身有效 · 永不过期**
+💡 **生产力预估**：当前剩余额度大约还可支持 **${estRounds}+ 轮** 日常编程或长文推演问答！
+----------------------------------------
+*本次账户查询由极光网关本地秒回，未消耗您任何上游 Tokens 额度。您可以放心继续使用！*`
+    }
+
+    const createdTime = Math.floor(Date.now() / 1000)
+    const completionId = `chatcmpl-quota-${Date.now()}`
+
+    if (stream) {
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.setHeader('X-Accel-Buffering', 'no')
+      res.setHeader('X-Remaining-Tokens', remainingTokens)
+      res.setHeader('X-Consumed-Tokens', 0)
+
+      const chunk = {
+        id: completionId,
+        object: 'chat.completion.chunk',
+        created: createdTime,
+        model,
+        choices: [
+          {
+            index: 0,
+            delta: { role: 'assistant', content: replyContent },
+            finish_reason: null,
+          },
+        ],
+      }
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+
+      const finalChunk = {
+        id: completionId,
+        object: 'chat.completion.chunk',
+        created: createdTime,
+        model,
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: 'stop',
+          },
+        ],
+      }
+      res.write(`data: ${JSON.stringify(finalChunk)}\n\n`)
+      res.write('data: [DONE]\n\n')
+      return res.end()
+    } else {
+      res.setHeader('X-Remaining-Tokens', remainingTokens)
+      res.setHeader('X-Consumed-Tokens', 0)
+      return res.json({
+        id: completionId,
+        object: 'chat.completion',
+        created: createdTime,
+        model,
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: replyContent },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 120,
+          total_tokens: 0,
+        },
+      })
+    }
+  }
+
+  // 🚀 核心智能路由：自动根据请求模型 + 是否传图片，精准分流至最低成本分组 Key！
   const route = routeUpstreamTarget(model, messages)
   const afuBase = process.env.AFU_API_BASE || 'https://api.afugpt.cn/v1'
+  const imageBase = process.env.IMAGE_API_BASE || 'https://oneapi.gemiaude.com/v1'
+  const imageKey = process.env.IMAGE_API_KEY || 'sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy'
 
   const upstreamPayload = {
     ...restParams,
@@ -652,23 +1498,56 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 
   try {
-    const upstreamResp = await fetchAfuWithTieredRouting(
-      `${afuBase}/chat/completions`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(upstreamPayload),
-      },
-      route.keyGroup
-    )
+    let upstreamResp = null
+
+    // 🎨 生图三级智能容灾引擎：
+    // Tier 1 (首选 3.5分钱): Gemiaude gpt-image-2
+    // Tier 2 (备用 4.5分钱): Gemiaude gpt-image-2-2k (遇抖动/报错自动顺延)
+    // Tier 3 (终极 1毛钱): 阿福 API gpt-image-2 官方专线保底
+    if (route.isImageGeneration) {
+      upstreamResp = await fetchImageWithThreeTierFallback(upstreamPayload, true)
+    } else {
+      upstreamResp = await fetchAfuWithTieredRouting(
+        `${afuBase}/chat/completions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(upstreamPayload),
+        },
+        route.keyGroup
+      )
+    }
+
+    // 智能高可用熔断：若上游因模型渠道拥堵返回 5xx/404，自动无感切换至【claude-sonnet-4-6】全球顶尖通道保底
+    if (!upstreamResp.ok && (upstreamResp.status >= 500 || upstreamResp.status === 404) && route.upstreamModel !== 'claude-sonnet-4-6') {
+      console.warn(`[智能熔断保底] 原模型【${route.upstreamModel}】上游返回 ${upstreamResp.status}，自动无感切换至【claude-sonnet-4-6】保底通道...`)
+      try {
+        const fallbackResp = await fetchAfuWithTieredRouting(
+          `${afuBase}/chat/completions`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...upstreamPayload, model: 'claude-sonnet-4-6' }),
+          },
+          'special'
+        )
+        if (fallbackResp.ok) {
+          upstreamResp = fallbackResp
+          route.upstreamModel = 'claude-sonnet-4-6'
+          route.routedNote = 'Claude 3.7/Sonnet 高可用保底专线'
+        }
+      } catch (fbErr) {
+        console.error('[熔断保底异常]:', fbErr.message)
+      }
+    }
 
     if (!upstreamResp.ok) {
       const errText = await upstreamResp.text()
       try {
         const parsed = JSON.parse(errText)
-        return res.status(upstreamResp.status).json(parsed)
+        return res.status(upstreamResp.status).json(sanitizeUpstreamError(parsed))
       } catch {
-        return sendOpenAIError(res, upstreamResp.status, `上游响应错误: ${errText}`, 'upstream_error', 'upstream_failed')
+        return sendOpenAIError(res, upstreamResp.status, sanitizeUpstreamError(`节点响应异常: ${errText}`), 'upstream_error', 'upstream_failed')
       }
     }
 
@@ -716,6 +1595,12 @@ app.post('/v1/chat/completions', async (req, res) => {
           const finalCostTokens = Math.round(streamEstimatedTokens * (route.tokenMultiplier || 1.0))
           card.remainingTokens = Math.max(0, (card.remainingTokens || 0) - finalCostTokens)
           card.usedTokens = (card.usedTokens || 0) + finalCostTokens
+          card.lastCallInfo = {
+            model,
+            costTokens: finalCostTokens,
+            time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+            routedNote: route.routedNote,
+          }
           writeDb(db)
           console.log(`[极光API] Key ${card.code} 流式调用 ${model} (${route.routedNote}) 扣除 ${finalCostTokens} Tokens，剩余 ${card.remainingTokens}`)
           res.end()
@@ -738,6 +1623,12 @@ app.post('/v1/chat/completions', async (req, res) => {
 
       card.remainingTokens = Math.max(0, (card.remainingTokens || 0) - finalCostTokens)
       card.usedTokens = (card.usedTokens || 0) + finalCostTokens
+      card.lastCallInfo = {
+        model,
+        costTokens: finalCostTokens,
+        time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+        routedNote: route.routedNote,
+      }
       writeDb(db)
 
       if (data && data.model) data.model = model // 100% 隐藏真实上游
@@ -761,22 +1652,34 @@ app.post('/v1/images/generations', async (req, res) => {
     return sendOpenAIError(res, 401, 'API Key 无效或未提供', 'invalid_request_error', 'invalid_api_key')
   }
 
-  const costTokens = 20000 // 生图固定扣 2 万 Tokens (约 0.1 元成本)
-  if ((card.remainingTokens || 0) < costTokens) {
-    return sendOpenAIError(res, 402, '算力不足，生成一张图片需要 20,000 Tokens', 'insufficient_quota', 'quota_exhausted')
+  // 🛡️ 安全防薅羊毛：体验 Key 禁用昂贵的商业绘画接口
+  if (card.code === 'sk-aurora-demo-8888') {
+    return sendOpenAIError(res, 403, '体验 Key 仅支持文本与编程对话实测，商业超清 AI 绘画请使用您的专属 Key。', 'permission_denied', 'feature_disabled')
   }
 
   const { prompt, n = 1, size = '1024x1024' } = req.body || {}
+  const requestedN = Math.min(4, Math.max(1, parseInt(n, 10) || 1))
+  const costTokens = 20000 * requestedN // 严格按实际生图张数扣费 (单张2万Tokens)
+
+  if ((card.remainingTokens || 0) < costTokens) {
+    return sendOpenAIError(res, 402, `算力不足，生成 ${requestedN} 张图片需要 ${costTokens.toLocaleString()} Tokens`, 'insufficient_quota', 'quota_exhausted')
+  }
+
   const afuBase = process.env.AFU_API_BASE || 'https://api.afugpt.cn/v1'
+  const imageBase = process.env.IMAGE_API_BASE || 'https://oneapi.gemiaude.com/v1'
+  const imageKey = process.env.IMAGE_API_KEY || 'sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy'
 
   try {
-    const upstreamResp = await fetchAfuWithFallback(`${afuBase}/images/generations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, n, size, model: 'gpt-image-2' }),
-    })
+    // 🎨 生图三级智能容灾引擎调度 (Tier 1 3.5分 ➔ Tier 2 4.5分 ➔ Tier 3 阿福保底)
+    const upstreamResp = await fetchImageWithThreeTierFallback(
+      { prompt, n: requestedN, size, model: 'gpt-image-2' },
+      false
+    )
 
-    if (!upstreamResp.ok) return res.status(upstreamResp.status).send(await upstreamResp.text())
+    if (!upstreamResp.ok) {
+      const errText = await upstreamResp.text()
+      return res.status(upstreamResp.status).send(sanitizeUpstreamError(errText))
+    }
     const data = await upstreamResp.json()
 
     card.remainingTokens = Math.max(0, card.remainingTokens - costTokens)
@@ -786,7 +1689,7 @@ app.post('/v1/images/generations', async (req, res) => {
     res.setHeader('X-Remaining-Tokens', card.remainingTokens)
     res.json(data)
   } catch (err) {
-    res.status(500).json({ error: { message: `生图通道异常: ${err.message}` } })
+    res.status(500).json({ error: { message: `生图通道异常: ${sanitizeUpstreamError(err.message)}` } })
   }
 })
 
@@ -976,8 +1879,8 @@ app.get('/claim', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'claim.html'))
 })
 
-// 管理员批量生成卡密并输出纯文本 (一键复制到面包多卡密库)
-app.post('/api/admin/cards/generate', (req, res) => {
+// 管理员批量生成卡密并输出纯文本 (必须通过 requireAdminAuth 鉴权，严禁未授权调用)
+app.post('/api/admin/cards/generate', requireAdminAuth, (req, res) => {
   const { count = 10, packageId = 'pkg_trial', remark = '面包多上架' } = req.body || {}
   const pkg = TOKEN_PACKAGES.find((p) => p.id === packageId) || TOKEN_PACKAGES[0]
   const db = readDb()
@@ -1012,8 +1915,8 @@ app.post('/api/admin/cards/generate', (req, res) => {
   })
 })
 
-// 查询所有卡密概况
-app.get('/api/admin/cards', (_req, res) => {
+// 查询所有卡密概况 (必须通过 requireAdminAuth 鉴权，严禁未授权读取数据库)
+app.get('/api/admin/cards', requireAdminAuth, (_req, res) => {
   const db = readDb()
   const list = Object.values(db.cards || {}).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
   res.json({ ok: true, total: list.length, cards: list })
@@ -1234,20 +2137,28 @@ app.post('/api/webhooks/mbd', async (req, res) => {
   res.json({ ok: true })
 })
 
-// 爱发电订单推送异步通知
+// 爱发电订单推送异步通知 (具备官方接口二次验真，严防伪造推送骗取 Key)
 app.post('/api/webhooks/afdian', async (req, res) => {
   const { data } = req.body || {}
   console.log(`[Webhook 接收] 收到爱发电通知:`, data ? data.type : '')
 
   if (data && data.type === 'order' && data.order) {
     const { out_trade_no, status, total_amount, plan_id } = data.order
-    console.log(`[爱发电 Webhook] 订单 ${out_trade_no}, status=${status}, 金额=${total_amount}`)
+    console.log(`[爱发电 Webhook] 订单 ${out_trade_no}, status=${status}, 金额=${total_amount}，正在进行官方接口二次核验...`)
 
     if (Number(status) === 2) {
+      // 🛡️ 安全防伪造核验：向爱发电开放平台二次查询该订单真实到账状态
+      const verifyRes = await verifyAfdianOrder(out_trade_no)
+      if (!verifyRes.ok) {
+        console.warn(`[爱发电 Webhook 拦截] 订单 ${out_trade_no} 官方二次验真未通过，拒绝发卡: ${verifyRes.message}`)
+        return res.json({ ec: 400, em: '验真未通过' })
+      }
+
       const db = readDb()
       const existing = Object.values(db.cards || {}).find((c) => c.boundOrderId === out_trade_no)
       if (!existing) {
-        const matchedPkg = matchPackageByAmountOrPlan(total_amount, plan_id)
+        const verifiedAmount = verifyRes.amountYuan || total_amount
+        const matchedPkg = matchPackageByAmountOrPlan(verifiedAmount, plan_id)
         const newKey = `sk-aurora-${crypto.randomBytes(8).toString('hex')}`
         db.cards[newKey] = {
           code: newKey,
@@ -1259,9 +2170,9 @@ app.post('/api/webhooks/afdian', async (req, res) => {
           usedTokens: 0,
           boundOrderId: out_trade_no,
           boundPlatform: 'afdian',
-          paidAmount: total_amount,
+          paidAmount: verifiedAmount,
           claimedAt: new Date().toISOString(),
-          remark: `爱发电 Webhook 自动履约·${matchedPkg.name}`,
+          remark: `爱发电 Webhook 官方验真自动履约·${matchedPkg.name}`,
           createdAt: new Date().toISOString(),
         }
 
@@ -1272,7 +2183,7 @@ app.post('/api/webhooks/afdian', async (req, res) => {
         }
 
         writeDb(db)
-        console.log(`[爱发电 Webhook] 成功为订单 ${out_trade_no} (¥${total_amount}) 签发独立 Key: ${newKey}`)
+        console.log(`[爱发电 Webhook] 成功为官方验真订单 ${out_trade_no} (¥${verifiedAmount}) 签发独立 Key: ${newKey}`)
       }
     }
   }

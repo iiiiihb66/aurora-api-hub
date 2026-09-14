@@ -51,9 +51,12 @@ node server.js # 启动服务
 
 ---
 
-## 📖 架构白皮书与商业闭环指南
+## 📖 架构白皮书与知识库索引
 
-系统完整的产品定位、成本与暴利模型、多模态智能升配引擎、以及面包多/爱发电全自动发货闭环实战总结，请参阅：
-👉 [docs/AURORA_PRODUCT_DESIGN.md](./docs/AURORA_PRODUCT_DESIGN.md)
+- **阿福 API 价格体系、代码天梯榜与加量不加价升级全景知识库**：
+  👉 [docs/AFU_API_KNOWLEDGE_BASE.md](./docs/AFU_API_KNOWLEDGE_BASE.md)
+- **系统完整产品设计、成本算账与商业闭环指南**：
+  👉 [docs/AURORA_PRODUCT_DESIGN.md](./docs/AURORA_PRODUCT_DESIGN.md)
 - **商业化交付与发卡核心痛点陈述（寻求外部建议）**：
   👉 [docs/PAYMENT_FULFILLMENT_PROBLEM.md](./docs/PAYMENT_FULFILLMENT_PROBLEM.md)
+

@@ -1242,6 +1242,423 @@ button {
 }
 
 /* ==========================================================
+   11.5 官方模型全景对照表 (Model Matrix Table & Filters)
+   ========================================================== */
+.model-table-card {
+  margin-top: 36px;
+  background: rgba(13, 17, 24, 0.85);
+  border: 1px solid var(--line);
+  padding: 24px;
+  border-radius: 4px;
+}
+
+.model-table-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.model-filter-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: 500 0.72rem var(--font-mono);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-filter-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.model-filter-btn.active {
+  background: var(--electric);
+  border-color: var(--electric);
+  color: #050608;
+  font-weight: 700;
+}
+
+.model-filter-btn sup {
+  font-size: 0.62rem;
+  opacity: 0.85;
+}
+
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.matrix-table th {
+  font: 600 0.7rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.matrix-table td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+
+.matrix-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.matrix-table tr:last-child td {
+  border-bottom: none;
+}
+
+.model-id-badge {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.model-category-pill {
+  font: 500 0.65rem var(--font-mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  color: var(--electric);
+  background: rgba(184, 255, 56, 0.08);
+  border: 1px solid rgba(184, 255, 56, 0.3);
+}
+
+.pill-code,
+.pill-chat,
+.pill-reason,
+.pill-chinese,
+.pill-pro,
+.pill-literary,
+.pill-compat,
+.pill-image {
+  color: var(--electric);
+  background: rgba(184, 255, 56, 0.08);
+  border: 1px solid rgba(184, 255, 56, 0.3);
+}
+
+.capability-tag {
+  font: 600 0.62rem var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+.cap-vision {
+  background: rgba(184, 255, 56, 0.15);
+  color: var(--electric);
+  border: 1px solid rgba(184, 255, 56, 0.4);
+}
+.cap-chatgpt {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.cap-text {
+  background: rgba(34, 211, 238, 0.1);
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+.model-search-box {
+  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--line);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 8px 14px;
+  border-radius: 4px;
+  outline: none;
+  min-width: 260px;
+  transition: border-color 0.2s;
+}
+.model-search-box:focus {
+  border-color: var(--electric);
+}
+
+.rate-badge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.btn-copy-model {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-copy-model:hover {
+  border-color: var(--electric);
+  color: var(--electric);
+}
+
+/* ==========================================================
+   11.5 7 大核心算力阵营全景看板与 62+ 模型速查库
+   ========================================================== */
+.cluster-overview-wrap {
+  margin-bottom: 28px;
+  background: rgba(13, 17, 24, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 28px 26px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cluster-hud-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+
+.cluster-hud-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cluster-hud-num {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--electric);
+}
+
+.cluster-hud-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+
+.clusters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+
+.cluster-card {
+  background: rgba(18, 24, 34, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.cluster-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(184, 255, 56, 0.4);
+  background: rgba(22, 30, 42, 0.9);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+.cluster-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cluster-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.cluster-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.cluster-pricing-banner {
+  background: rgba(184, 255, 56, 0.06);
+  border: 1px dashed rgba(184, 255, 56, 0.3);
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cluster-price-val {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--electric);
+}
+
+.cluster-price-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.cluster-model-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cluster-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 3px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cluster-chip:hover {
+  border-color: var(--electric);
+  color: var(--electric);
+  background: rgba(184, 255, 56, 0.08);
+}
+
+.cluster-footer-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.btn-cluster-filter {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s;
+  padding: 0;
+}
+
+.btn-cluster-filter:hover {
+  color: var(--electric);
+}
+
+/* 62款模型速查折叠抽屉 */
+.full-drawer-toggle {
+  margin-top: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.full-drawer-toggle:hover {
+  border-color: var(--electric);
+  background: rgba(184, 255, 56, 0.04);
+}
+
+.full-drawer-content {
+  display: none;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.full-drawer-content.active {
+  display: block;
+}
+
+.full-models-category-block {
+  margin-bottom: 20px;
+  background: rgba(10, 14, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 16px 18px;
+}
+
+.full-models-category-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================
    12. 响应式布局媒体查询 (Mobile Breakpoints)
    ========================================================== */
 @media (max-width: 980px) {
