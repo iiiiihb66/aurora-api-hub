@@ -5,6 +5,8 @@ import path from 'path'
 import crypto from 'crypto'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
+import { validateImageEditForm, getGeneratedImage } from '../lib/imageEdits.js'
+import { readUpstreamJson } from '../lib/upstreamResponse.js'
 import { verifyOrder, verifyMbdOrder, verifyAfdianOrder } from './services/payment_verifier.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -378,7 +380,11 @@ async function fetchImageWithThreeTierFallback(payload, isChatCompletions = true
     }
   }
 
-  // 3. Tier 3: 终极阿福官方高可用兜底 (¥0.10/张)
+  // 3. Tier 3: 阿福兜底 —— 仅文本对话(chat/completions)保留；
+  //    出图链路按用户要求（2026-09-19）已移除阿福，两级低价通道均失败时直接报错
+  if (!isChatCompletions) {
+    throw new Error('生图上游暂时不可用（低价通道 Tier1/Tier2 均失败，已停用阿福兜底），请稍后重试')
+  }
   console.log(`[生图三级容灾 - Tier 3] 切换至阿福 API 终极保底通道 (¥0.10/张)...`)
   return fetchAfuWithTieredRouting(
     `${afuBase}${endpoint}`,
@@ -1278,6 +1284,7 @@ app.get('/v1', (_req, res) => {
       '/v1/models',
       '/v1/models/:model',
       '/v1/images/generations',
+      '/v1/images/edits',
       '/v1/dashboard/billing/subscription',
       '/v1/dashboard/billing/usage',
       '/v1/user/balance',
@@ -1666,6 +1673,39 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 })
 
+// Binary image edits: authenticated, quota checked, all source files forwarded unchanged.
+app.post('/v1/images/edits', express.raw({ type: 'multipart/form-data', limit: '100mb' }), async (req, res) => {
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim()
+  const db = readDb()
+  const card = db.cards[token]
+  if (!card || card.status !== 'ACTIVE') return sendOpenAIError(res, 401, 'API Key 无效或未激活', 'invalid_request_error', 'invalid_api_key')
+  if (token === 'sk-aurora-demo-8888') return sendOpenAIError(res, 403, '体验 Key 不支持图片编辑', 'permission_denied', 'feature_disabled')
+  try {
+    const form = await new Request('http://local/images/edits', {
+      method: 'POST', headers: { 'Content-Type': req.headers['content-type'] || '' }, body: req.body,
+    }).formData()
+    const { model, n } = validateImageEditForm(form)
+    const costTokens = (model.includes('2.5') ? 30000 : 20000) * n
+    if (card.remainingTokens < costTokens) return sendOpenAIError(res, 402, '算力不足，无法进行图片编辑', 'insufficient_quota', 'quota_exhausted')
+    const key = process.env.IMAGE_API_KEY
+    if (!key) return sendOpenAIError(res, 503, '网关未配置参考图编辑线路', 'server_configuration_error', 'image_edit_unavailable')
+    const base = (process.env.IMAGE_API_BASE || 'https://oneapi.gemiaude.com/v1').replace(/\/+$/, '')
+    const response = await fetch(`${base}/images/edits`, {
+      method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(120000),
+    })
+    const data = await readUpstreamJson(response, '参考图编辑服务')
+    getGeneratedImage(data)
+    card.remainingTokens -= costTokens
+    card.usedTokens = (card.usedTokens || 0) + costTokens
+    writeDb(db)
+    res.setHeader('X-Remaining-Tokens', String(card.remainingTokens))
+    res.setHeader('X-Consumed-Tokens', String(costTokens))
+    return res.json(data)
+  } catch (error) {
+    return sendOpenAIError(res, error.status || 502, sanitizeUpstreamError(error.message), 'image_edit_error', error.code || 'REFERENCE_EDIT_FAILED')
+  }
+})
+
 // 生图接口 (POST /v1/images/generations)
 app.post('/v1/images/generations', async (req, res) => {
   const db = readDb()
@@ -1681,7 +1721,7 @@ app.post('/v1/images/generations', async (req, res) => {
     return sendOpenAIError(res, 403, '体验 Key 仅支持文本与编程对话实测，商业超清 AI 绘画请使用您的专属 Key。', 'permission_denied', 'feature_disabled')
   }
 
-  const { prompt, n = 1, size = '1024x1024' } = req.body || {}
+  const { prompt, n = 1, size = '1024x1024', model, image, images, quality, response_format } = req.body || {}
   const requestedN = Math.min(4, Math.max(1, parseInt(n, 10) || 1))
   const costTokens = 20000 * requestedN // 严格按实际生图张数扣费 (单张2万Tokens)
 
@@ -1695,8 +1735,18 @@ app.post('/v1/images/generations', async (req, res) => {
 
   try {
     // 🎨 生图三级智能容灾引擎调度 (Tier 1 3.5分 ➔ Tier 2 4.5分 ➔ Tier 3 阿福保底)
+    const upstreamPayload = {
+      prompt,
+      n: requestedN,
+      size,
+      model: model || 'gpt-image-2',
+      ...(image ? { image } : {}),
+      ...(images ? { images } : {}),
+      ...(quality ? { quality } : {}),
+      ...(response_format ? { response_format } : {}),
+    }
     const upstreamResp = await fetchImageWithThreeTierFallback(
-      { prompt, n: requestedN, size, model: 'gpt-image-2' },
+      upstreamPayload,
       false
     )
 

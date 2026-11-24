@@ -90,6 +90,160 @@ const TOKEN_PACKAGES = [
 // 3. 基础静态预置活跃密钥白名单
 const PRE_AUTHORIZED_KEYS = new Set(["sk-aurora-fd6f39bde9d2c694","sk-aurora-ed65e99cf51c84ec","sk-aurora-aae92e8d2ed29ac8","sk-aurora-aa1e979b26c45f0a","sk-aurora-a8bd1416f6a20c30","sk-aurora-f5017f52ddf30b63","sk-aurora-fdd9067e5cd3b6fd","sk-aurora-c12de5dc523912a5","sk-aurora-0748a502e790b7f6","sk-aurora-0cb830d861056b0c","sk-aurora-d59c48bfd12ad13e","sk-aurora-140c7b5d479a6f5d","sk-aurora-3fa44cfddb3785e2","sk-aurora-ee97d40c520bc873","sk-aurora-2657333f02638817","sk-aurora-7b742ba7b2884961","sk-aurora-dcf22e706ad9847e","sk-aurora-b40f997886cb0acc","sk-aurora-3cca92da8bfb5134","sk-aurora-f0a3209525b5ce83","sk-aurora-2b1a7f06b772edbd","sk-aurora-8defb6d1a8d35beb","sk-aurora-bb4c4cc278a8bc16","sk-aurora-62da90968d826771","sk-aurora-49feba40ef8788e4","sk-aurora-3eada5674dbfb5da","sk-aurora-fe7c799cd5f0f47b","sk-aurora-d8974e1a23298b94","sk-aurora-b8252899fcf630c2","sk-aurora-79582d4aa2093584","sk-aurora-91c4356439877672","sk-aurora-fbcb9111fefca36f","sk-aurora-05131a9bea7b5fcb","sk-aurora-3103c192a1c0e6df","sk-aurora-79f55bfc603b3f32","sk-aurora-2e5e5dec94b46108","sk-aurora-8bc28f826a106d12","sk-aurora-85f71b157b9bdf43","sk-aurora-534bf195ef9aad7f","sk-aurora-dc885f06e8cfbfe1","sk-aurora-7a16762a4e2f7661","sk-aurora-4bdb746e35007738","sk-aurora-997dbaa437d47bae","sk-aurora-a95c28a99ff817a2","sk-aurora-cfa680edcecb113d","sk-aurora-af3d405848c0ba56","sk-aurora-f672afe144259d8d"]);
 
+
+// Shared source-image editing helpers
+async function readUpstreamJson(response, service = 'AI 服务') {
+  const status = `HTTP ${response.status}`
+  let text
+  try {
+    text = await response.text()
+  } catch {
+    throw new Error(`${service}响应中断（${status}），未取得有效结果`)
+  }
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    // 兼容部分上游代理即便 stream: false 仍返回 SSE 流（data: {...}）
+    if (text.includes('data:')) {
+      try {
+        const lines = text.split('\n')
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('data:') && !trimmed.includes('[DONE]')) {
+            const jsonPart = trimmed.replace(/^data:\s*/, '')
+            if (jsonPart.startsWith('{')) {
+              data = JSON.parse(jsonPart)
+              break
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+  if (!response.ok || data?.error) {
+    const code = String(data?.error?.code || data?.code || '')
+    const message = typeof data?.error === 'string' ? data.error : String(data?.error?.message || data?.message || '')
+    if (code === 'insufficient_user_quota' || /用户额度不足|账户余额不足|account balance.*insufficient/i.test(message)) {
+      throw new Error(`${service}的上游 API 账户余额不足（${status}），请在 API 供应商后台充值；页面里的幻绘积分与上游余额相互独立`)
+    }
+    if (response.status === 401 || /invalid api key|invalid.*token|无效.*令牌|密钥.*无效/i.test(message)) {
+      const location = code === 'bad_response_status_code' ? '上游模型线路' : 'API 密钥'
+      throw new Error(`${service}的${location}鉴权失败（${status}），请检查密钥是否失效；若模型列表查询正常，请联系供应商检查该模型线路`)
+    }
+    throw new Error(`${service}请求失败（${status}），请检查服务状态、模型授权或额度`)
+  }
+  if (!text.trim()) {
+    throw new Error(`${service}返回了空响应（${status}），未取得有效结果`)
+  }
+  if (data === undefined) {
+    throw new Error(`${service}返回的数据不完整或格式异常（${status}）`)
+  }
+  if (!data || typeof data !== 'object' || data.error) {
+    throw new Error(`${service}未返回有效结果（${status}），请检查模型授权或额度`)
+  }
+  return data
+}
+// Image editing submits source files; it does not guarantee pixel-identical output.
+
+function inputError(message) {
+  return Object.assign(new Error(message), { status: 400, code: 'INVALID_REFERENCE_IMAGE' })
+}
+
+function getReferenceImages(images, image) {
+  if (images != null && !Array.isArray(images)) throw inputError('参考图列表格式无效，请重新上传图片')
+  const refs = Array.isArray(images) && images.length ? images : image ? [image] : []
+  if (refs.length > 9) throw inputError('最多支持 9 张参考图，请减少图片数量')
+  if (refs.some(ref => typeof ref !== 'string' || !/^(data:image\/|https?:\/\/)/i.test(ref))) {
+    throw inputError('参考图片无效，请重新上传图片')
+  }
+  return refs
+}
+
+function assertReferenceEditModel(model) {
+  if (!/^gpt-image-2(?:\.5)?(?:-(?:2k|4k))?$/.test(model)) {
+    throw Object.assign(new Error('当前模型尚未接入参考图编辑，请选择 GPT Image 2.0 或 2.5'), {
+      status: 400, code: 'REFERENCE_MODEL_UNSUPPORTED',
+    })
+  }
+}
+
+async function imageRefToBlob(refImage, { fetchImpl = fetch, signal } = {}) {
+  getReferenceImages([refImage])
+  let blob
+  if (refImage.startsWith('data:image/')) {
+    const match = refImage.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=\s]+)$/i)
+    if (!match) throw inputError('参考图格式无效，请使用 PNG、JPEG 或 WebP')
+    let binary
+    try { binary = atob(match[2].replace(/\s/g, '')) } catch { throw inputError('参考图数据损坏，请重新上传') }
+    blob = new Blob([Uint8Array.from(binary, c => c.charCodeAt(0))], { type: match[1].toLowerCase() })
+  } else {
+    const response = await fetchImpl(refImage, { signal: signal || AbortSignal.timeout(30000) })
+    if (!response.ok) throw inputError(`读取参考图失败（HTTP ${response.status}），请重新上传`)
+    blob = await response.blob()
+  }
+  if (!/^image\/(png|jpe?g|webp)(?:;|$)/i.test(blob.type) || !blob.size) {
+    throw inputError('参考图为空或格式不支持，请使用 PNG、JPEG 或 WebP')
+  }
+  if (blob.size > 20 * 1024 * 1024) throw inputError('单张参考图不能超过 20MB')
+  const ext = /jpe?g/i.test(blob.type) ? 'jpg' : /webp/i.test(blob.type) ? 'webp' : 'png'
+  return { blob, filename: `reference.${ext}` }
+}
+
+function getGeneratedImage(data) {
+  const result = data?.data?.[0]
+  if (typeof result?.url === 'string' && /^https?:\/\//.test(result.url)) return result.url
+  if (typeof result?.b64_json === 'string' && result.b64_json.trim()) {
+    return result.b64_json.startsWith('data:image/') ? result.b64_json : `data:image/png;base64,${result.b64_json}`
+  }
+  throw Object.assign(new Error('生图服务未返回有效图片'), { status: 502, code: 'IMAGE_RESULT_MISSING' })
+}
+
+function validateImageEditForm(form) {
+  const model = String(form.get('model') || 'gpt-image-2')
+  assertReferenceEditModel(model)
+  const n = Number(form.get('n') || 1)
+  if (!Number.isInteger(n) || n < 1 || n > 4) throw inputError('生成数量必须为 1 到 4 张')
+  if (!String(form.get('prompt') || '').trim()) throw inputError('缺少图片编辑指令')
+  const files = [...form.getAll('image'), ...form.getAll('image[]')]
+  if (!files.length || files.length > 9) throw inputError('请上传 1 到 9 张参考图片文件')
+  if (files.some(file => typeof file === 'string' || !file.size || file.size > 20 * 1024 * 1024 || !/^image\/(png|jpe?g|webp)$/.test(file.type))) {
+    throw inputError('参考图文件无效，请使用不超过 20MB 的 PNG、JPEG 或 WebP')
+  }
+  return { model, n, referenceCount: files.length }
+}
+
+async function callUpstreamImageEdits({
+  base = 'https://oneapi.gemiaude.com/v1', key, model = 'gpt-image-2', prompt,
+  refImages, refImage, size, signal, fetchImpl = fetch,
+}) {
+  assertReferenceEditModel(model)
+  const refs = getReferenceImages(refImages, refImage)
+  if (!refs.length) throw inputError('图像编辑需要上传参考图')
+  const formData = new FormData()
+  formData.append('model', model)
+  formData.append('prompt', prompt)
+  if (size) formData.append('size', size)
+  formData.append('n', '1')
+  for (const [index, ref] of refs.entries()) {
+    const { blob, filename } = await imageRefToBlob(ref, { fetchImpl, signal })
+    formData.append(refs.length === 1 ? 'image' : 'image[]', blob, `${index + 1}-${filename}`)
+  }
+  try {
+    const response = await fetchImpl(`${base.replace(/\/+$/, '')}/images/edits`, {
+      method: 'POST', headers: key ? { Authorization: `Bearer ${key}` } : {},
+      body: formData, signal: signal || AbortSignal.timeout(120000),
+    })
+    // Validate before callers deduct credits or save a success record.
+    const data = await readUpstreamJson(response.clone(), '参考图编辑服务')
+    getGeneratedImage(data)
+    return response
+  } catch (error) {
+    throw Object.assign(new Error(`参考图编辑未成功：${error.message || '请稍后重试'}`), {
+      status: 502, code: 'REFERENCE_EDIT_FAILED',
+    })
+  }
+}
 function md5(string) {
   function rotateLeft(lValue, iShiftBits) { return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits)); }
   function addUnsigned(lX, lY) {
@@ -773,6 +927,38 @@ export default {
       }
     }
 
+    // Reference-image edits never fall back to a text-only generation endpoint.
+    if (pathname === "/v1/images/edits" && method === "POST") {
+      const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+      if (!token) return jsonResponse({ error: { message: "未提供 API Key", code: "invalid_api_key" } }, 401);
+      let cardRecord = env?.AURORA_STORE ? await env.AURORA_STORE.get("key:" + token, "json") : null;
+      if (!cardRecord && PRE_AUTHORIZED_KEYS.has(token)) {
+        cardRecord = { key: token, remainingTokens: 2000000, usedTokens: 0, status: "ACTIVE" };
+      }
+      if (!cardRecord || cardRecord.status !== "ACTIVE") return jsonResponse({ error: { message: "API Key 无效或未激活", code: "invalid_api_key" } }, 401);
+      if (token === "sk-aurora-demo-8888") return jsonResponse({ error: { message: "体验 Key 不支持图片编辑" } }, 403);
+      try {
+        const form = await request.formData();
+        const { model, n } = validateImageEditForm(form);
+        const costTokens = (model.includes("2.5") ? 90000 : 60000) * n;
+        if ((cardRecord.remainingTokens || 0) < costTokens) return jsonResponse({ error: { message: "算力不足，无法进行图片编辑", code: "insufficient_quota" } }, 402);
+        if (!env?.IMAGE_API_KEY) return jsonResponse({ error: { message: "网关未配置参考图编辑线路", code: "image_edit_unavailable" } }, 503);
+        const base = (env.IMAGE_API_BASE || "https://oneapi.gemiaude.com/v1").replace(/\/+$/, "");
+        const response = await fetch(base + "/images/edits", {
+          method: "POST", headers: { Authorization: "Bearer " + env.IMAGE_API_KEY }, body: form, signal: AbortSignal.timeout(120000),
+        });
+        const data = await readUpstreamJson(response, "参考图编辑服务");
+        getGeneratedImage(data);
+        cardRecord.remainingTokens -= costTokens;
+        cardRecord.usedTokens = (cardRecord.usedTokens || 0) + costTokens;
+        cardRecord.lastCallAt = new Date().toISOString();
+        if (env?.AURORA_STORE) await env.AURORA_STORE.put("key:" + token, JSON.stringify(cardRecord));
+        return jsonResponse(data, 200, { "X-Remaining-Tokens": String(cardRecord.remainingTokens), "X-Consumed-Tokens": String(costTokens) });
+      } catch (error) {
+        return jsonResponse({ error: { message: sanitizeUpstreamError(error.message), code: error.code || "REFERENCE_EDIT_FAILED" } }, error.status || 502);
+      }
+    }
+
     // 10. AI 商业绘画独立接口 (POST /v1/images/generations)
     if (pathname === "/v1/images/generations" && method === "POST") {
       const authHeader = request.headers.get("Authorization") || "";
@@ -803,7 +989,7 @@ export default {
       }
 
       const body = await request.json().catch(() => ({}));
-      const { prompt, n = 1, size = "1024x1024", model = "gpt-image-2.5-flare" } = body;
+      const { prompt, n = 1, size = "1024x1024", model = "gpt-image-2.5", image, images, quality, response_format } = body;
       const requestedN = Math.min(4, Math.max(1, parseInt(n, 10) || 1));
       const costTokens = 60000 * requestedN; // 单张图片扣除 60,000 算力点 (成本0.10元)
 
@@ -821,20 +1007,29 @@ export default {
       const imageKey = env?.IMAGE_API_KEY || "sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy";
       const upstreamKey = env?.AFU_KEY_DEFAULT || env?.AFU_API_KEY || "";
 
-      if (!upstreamKey && !imageKey) {
-        return jsonResponse({ error: { message: "网关未配置上游生图凭证", type: "server_configuration_error" } }, 500);
+      if (!imageKey) {
+        return jsonResponse({ error: { message: "网关未配置生图上游凭证 (IMAGE_API_KEY)", type: "server_configuration_error" } }, 500);
       }
 
       try {
         let upstreamResp = null;
 
-        // 🎨 生图三级容灾：Tier 1 (3.5分) ➔ Tier 2 (4.5分 2K) ➔ Tier 3 (阿福兜底)
+        // 🎨 生图二级容灾：Tier 1 透传请求模型名（支持 gpt-image-2.5 / -2k / -4k）➔ Tier 2 同画质档 flare 兜底
+        // 分辨率由模型名后缀决定（-2k/-4k），仅传 size 无效。全部走 gemiaude；阿福已从出图链路移除
+        // 成本：1K ¥0.035 / 2K ¥0.045 / 4K ¥0.055；flare 兜底 ¥0.07 / ¥0.08 / ¥0.09
+        const modelStr = String(model || "gpt-image-2.5");
+        const flareFallback = modelStr.includes("-4k")
+          ? "gpt-image-2.5-flare-4k"
+          : modelStr.includes("-2k")
+            ? "gpt-image-2.5-flare-2k"
+            : "gpt-image-2.5-flare";
+
         if (imageKey) {
           try {
             const res1 = await fetch(imageBase + "/images/generations", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: "Bearer " + imageKey },
-              body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2" }),
+            body: JSON.stringify({ prompt, n: requestedN, size, model: modelStr, ...(image ? { image } : {}), ...(images ? { images } : {}), ...(quality ? { quality } : {}), ...(response_format ? { response_format } : {}) }),
             });
             if (res1.ok) upstreamResp = res1;
           } catch {}
@@ -844,7 +1039,7 @@ export default {
               const res2 = await fetch(imageBase + "/images/generations", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: "Bearer " + imageKey },
-                body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2-2k" }),
+                body: JSON.stringify({ prompt, n: requestedN, size, model: flareFallback, ...(image ? { image } : {}), ...(images ? { images } : {}), ...(quality ? { quality } : {}), ...(response_format ? { response_format } : {}) }),
               });
               if (res2.ok) upstreamResp = res2;
             } catch {}
@@ -852,14 +1047,7 @@ export default {
         }
 
         if (!upstreamResp) {
-          upstreamResp = await fetch(afuBase + "/images/generations", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + upstreamKey,
-            },
-            body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2.5-flare" }),
-          });
+          return jsonResponse({ error: { message: "生图上游暂时不可用，请稍后重试（已停用阿福兜底通道）", type: "upstream_unavailable" } }, 502);
         }
 
         if (!upstreamResp.ok) {

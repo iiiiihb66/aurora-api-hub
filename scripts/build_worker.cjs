@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
+const imageEditHelpers = ['upstreamResponse.js', 'imageEdits.js'].map(name =>
+  fs.readFileSync(path.resolve(__dirname, '../../lib', name), 'utf8')
+    .replace(/^import .*$/gm, '').replace(/^export /gm, '')
+).join('\n');
+
 const dbPath = path.resolve(__dirname, '../data/api-db.json');
 const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 const activeKeys = Object.values(db.cards).filter(c => c.status === 'ACTIVE').map(c => c.code);
@@ -182,7 +187,7 @@ const TOKEN_PACKAGES = [
 // 3. 基础静态预置活跃密钥白名单
 const PRE_AUTHORIZED_KEYS = new Set(` + JSON.stringify(activeKeys) + `);
 
-` + md5Impl + `
+` + md5Impl + imageEditHelpers + `
 
 // 5. 爱发电官方订单验真逻辑 (100% 实时请求爱发电开放接口验真，杜绝任何假单绕过)
 async function verifyAfdianOrder(orderId, env) {
@@ -782,6 +787,38 @@ export default {
       }
     }
 
+    // Reference-image edits never fall back to a text-only generation endpoint.
+    if (pathname === "/v1/images/edits" && method === "POST") {
+      const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+      if (!token) return jsonResponse({ error: { message: "未提供 API Key", code: "invalid_api_key" } }, 401);
+      let cardRecord = env?.AURORA_STORE ? await env.AURORA_STORE.get("key:" + token, "json") : null;
+      if (!cardRecord && PRE_AUTHORIZED_KEYS.has(token)) {
+        cardRecord = { key: token, remainingTokens: 2000000, usedTokens: 0, status: "ACTIVE" };
+      }
+      if (!cardRecord || cardRecord.status !== "ACTIVE") return jsonResponse({ error: { message: "API Key 无效或未激活", code: "invalid_api_key" } }, 401);
+      if (token === "sk-aurora-demo-8888") return jsonResponse({ error: { message: "体验 Key 不支持图片编辑" } }, 403);
+      try {
+        const form = await request.formData();
+        const { model, n } = validateImageEditForm(form);
+        const costTokens = (model.includes("2.5") ? 90000 : 60000) * n;
+        if ((cardRecord.remainingTokens || 0) < costTokens) return jsonResponse({ error: { message: "算力不足，无法进行图片编辑", code: "insufficient_quota" } }, 402);
+        if (!env?.IMAGE_API_KEY) return jsonResponse({ error: { message: "网关未配置参考图编辑线路", code: "image_edit_unavailable" } }, 503);
+        const base = (env.IMAGE_API_BASE || "https://oneapi.gemiaude.com/v1").replace(/\\/+$/, "");
+        const response = await fetch(base + "/images/edits", {
+          method: "POST", headers: { Authorization: "Bearer " + env.IMAGE_API_KEY }, body: form, signal: AbortSignal.timeout(120000),
+        });
+        const data = await readUpstreamJson(response, "参考图编辑服务");
+        getGeneratedImage(data);
+        cardRecord.remainingTokens -= costTokens;
+        cardRecord.usedTokens = (cardRecord.usedTokens || 0) + costTokens;
+        cardRecord.lastCallAt = new Date().toISOString();
+        if (env?.AURORA_STORE) await env.AURORA_STORE.put("key:" + token, JSON.stringify(cardRecord));
+        return jsonResponse(data, 200, { "X-Remaining-Tokens": String(cardRecord.remainingTokens), "X-Consumed-Tokens": String(costTokens) });
+      } catch (error) {
+        return jsonResponse({ error: { message: sanitizeUpstreamError(error.message), code: error.code || "REFERENCE_EDIT_FAILED" } }, error.status || 502);
+      }
+    }
+
     // 10. AI 商业绘画独立接口 (POST /v1/images/generations)
     if (pathname === "/v1/images/generations" && method === "POST") {
       const authHeader = request.headers.get("Authorization") || "";
@@ -812,7 +849,7 @@ export default {
       }
 
       const body = await request.json().catch(() => ({}));
-      const { prompt, n = 1, size = "1024x1024", model = "gpt-image-2.5-flare" } = body;
+      const { prompt, n = 1, size = "1024x1024", model = "gpt-image-2.5", image, images, quality, response_format } = body;
       const requestedN = Math.min(4, Math.max(1, parseInt(n, 10) || 1));
       const costTokens = 60000 * requestedN; // 单张图片扣除 60,000 算力点 (成本0.10元)
 
@@ -830,20 +867,29 @@ export default {
       const imageKey = env?.IMAGE_API_KEY || "sk-MD2bEvqffzry7OGgM4lIVjeEnGJa6lLduZwrydi8XLBZnvAy";
       const upstreamKey = env?.AFU_KEY_DEFAULT || env?.AFU_API_KEY || "";
 
-      if (!upstreamKey && !imageKey) {
-        return jsonResponse({ error: { message: "网关未配置上游生图凭证", type: "server_configuration_error" } }, 500);
+      if (!imageKey) {
+        return jsonResponse({ error: { message: "网关未配置生图上游凭证 (IMAGE_API_KEY)", type: "server_configuration_error" } }, 500);
       }
 
       try {
         let upstreamResp = null;
 
-        // 🎨 生图三级容灾：Tier 1 (3.5分) ➔ Tier 2 (4.5分 2K) ➔ Tier 3 (阿福兜底)
+        // 🎨 生图二级容灾：Tier 1 透传请求模型名（支持 gpt-image-2.5 / -2k / -4k）➔ Tier 2 同画质档 flare 兜底
+        // 分辨率由模型名后缀决定（-2k/-4k），仅传 size 无效。全部走 gemiaude；阿福已从出图链路移除
+        // 成本：1K ¥0.035 / 2K ¥0.045 / 4K ¥0.055；flare 兜底 ¥0.07 / ¥0.08 / ¥0.09
+        const modelStr = String(model || "gpt-image-2.5");
+        const flareFallback = modelStr.includes("-4k")
+          ? "gpt-image-2.5-flare-4k"
+          : modelStr.includes("-2k")
+            ? "gpt-image-2.5-flare-2k"
+            : "gpt-image-2.5-flare";
+
         if (imageKey) {
           try {
             const res1 = await fetch(imageBase + "/images/generations", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: "Bearer " + imageKey },
-              body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2" }),
+            body: JSON.stringify({ prompt, n: requestedN, size, model: modelStr, ...(image ? { image } : {}), ...(images ? { images } : {}), ...(quality ? { quality } : {}), ...(response_format ? { response_format } : {}) }),
             });
             if (res1.ok) upstreamResp = res1;
           } catch {}
@@ -853,7 +899,7 @@ export default {
               const res2 = await fetch(imageBase + "/images/generations", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: "Bearer " + imageKey },
-                body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2-2k" }),
+                body: JSON.stringify({ prompt, n: requestedN, size, model: flareFallback, ...(image ? { image } : {}), ...(images ? { images } : {}), ...(quality ? { quality } : {}), ...(response_format ? { response_format } : {}) }),
               });
               if (res2.ok) upstreamResp = res2;
             } catch {}
@@ -861,14 +907,7 @@ export default {
         }
 
         if (!upstreamResp) {
-          upstreamResp = await fetch(afuBase + "/images/generations", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + upstreamKey,
-            },
-            body: JSON.stringify({ prompt, n: requestedN, size, model: "gpt-image-2.5-flare" }),
-          });
+          return jsonResponse({ error: { message: "生图上游暂时不可用，请稍后重试（已停用阿福兜底通道）", type: "upstream_unavailable" } }, 502);
         }
 
         if (!upstreamResp.ok) {
